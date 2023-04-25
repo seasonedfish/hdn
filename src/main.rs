@@ -48,11 +48,18 @@ fn main() {
 
     println!("Adding {:?} to home.nix", packages_to_add);
 
-    let result = nix_editor::write::addtoarr(&content, QUERY, packages_to_add.into_iter().cloned().collect()).unwrap();
-    match fs::write(FILE, result) {
+    let nix_add_result = nix_editor::write::addtoarr(&content, QUERY, packages_to_add.into_iter().cloned().collect());
+    let new_content = match nix_add_result {
+        Ok(new_content) => new_content,
+        Err(_error) => {
+            print_error(format!("Could not update nix for new packages"));
+            return;
+        }
+    };
+    match fs::write(FILE, new_content) {
         Ok(..) => {}
         Err(error) => {
-            print_error(format!("Could not add to home.nix: {error}"));
+            print_error(format!("Could not write to home.nix: {error}"));
             return;
         }
     }
