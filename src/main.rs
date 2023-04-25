@@ -20,6 +20,11 @@ fn main() {
         }
     }
 
+    if to_add.len() == 0 {
+        println!("nothing to add to home.nix, stopping");
+        return;
+    }
+
     println!("adding {:?} to home.nix", to_add);
 
     let result = nix_editor::write::addtoarr(&content, QUERY, to_add.into_iter().cloned().collect()).unwrap();
