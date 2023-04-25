@@ -28,7 +28,9 @@ Someday I'll go back, actually learn Rust, and rewrite this, but for now, use at
 ## Todos
 - Support old location for home.nix
 - Support remove subcommand
+- Show live stdout and stderr
 - Add help option
 - Reorganize code
 - Use rnix directly instead of `nix-editor`
+- Show home/nix diff
 - Actually learn Rust
