@@ -33,7 +33,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut packages_to_add = Vec::new();
-    for arg in &args[1..] {
+    for arg in args.iter().skip(1) {
         if existing_packages.contains(arg) {
             println!("Skipping {}: already in home.nix", arg);
         } else {
