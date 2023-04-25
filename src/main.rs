@@ -1,6 +1,5 @@
 use std::{env, fs};
 use std::collections::HashSet;
-use std::ptr::write;
 
 const FILE: &str = "/Users/fisher/Desktop/home.nix";
 const QUERY: &str = "home.packages";
