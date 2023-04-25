@@ -5,7 +5,15 @@ const FILE: &str = "/Users/fisher/Desktop/home.nix";
 const QUERY: &str = "home.packages";
 
 fn main() {
-    let content = fs::read_to_string(FILE).unwrap();
+    let read_file_result = fs::read_to_string(FILE);
+    let content = match read_file_result {
+        Ok(content) => content,
+        Err(error) => {
+            println!("Could not open home.nix: {}", error);
+            return;
+        }
+    };
+
     let packages: HashSet<String> = HashSet::from_iter(nix_editor::read::getarrvals(&content, QUERY).unwrap());
 
     let args: Vec<String> = env::args().collect();
