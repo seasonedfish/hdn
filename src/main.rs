@@ -11,10 +11,15 @@ fn print_error(message: String) {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 || args[1] != "add" {
+        print_error(String::from("Only the \"add\" subcommand is supported currently"));
+        return;
+    }
+
     let file = dirs::home_dir()
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
-
     println!("Using {} as home.nix", file.display());
 
     let fs_read_result = fs::read_to_string(file.clone());
@@ -34,10 +39,8 @@ fn main() {
         }
     };
 
-    let args: Vec<String> = env::args().collect();
-
     let mut packages_to_add = Vec::new();
-    for arg in args.iter().skip(1) {
+    for arg in args.iter().skip(2) {
         if existing_packages.contains(arg) {
             println!("Skipping {}: already in home.nix", arg);
         } else {
