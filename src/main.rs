@@ -49,5 +49,11 @@ fn main() {
     println!("Adding {:?} to home.nix", to_add);
 
     let result = nix_editor::write::addtoarr(&content, QUERY, to_add.into_iter().cloned().collect()).unwrap();
-    fs::write(FILE, result).expect("Failed to write file");
+    match fs::write(FILE, result) {
+        Ok(..) => {}
+        Err(error) => {
+            print_error(format!("Could not add to home.nix: {error}"));
+            return;
+        }
+    }
 }
