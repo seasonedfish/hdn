@@ -13,8 +13,8 @@ fn print_error(message: String) {
 fn main() {
     println!("Using {FILE} as home.nix");
 
-    let read_file_result = fs::read_to_string(FILE);
-    let content = match read_file_result {
+    let fs_read_result = fs::read_to_string(FILE);
+    let content = match fs_read_result {
         Ok(content) => content,
         Err(error) => {
             print_error(format!("Could not open home.nix: {error}"));
@@ -22,7 +22,7 @@ fn main() {
         }
     };
     let nix_read_result = nix_editor::read::getarrvals(&content, QUERY);
-    let packages: HashSet<String> = match nix_read_result {
+    let existing_packages: HashSet<String> = match nix_read_result {
         Ok(vec) => HashSet::from_iter(vec),
         Err(_error) => {
             print_error(format!("Could not get values of {QUERY} in home.nix"));
@@ -32,23 +32,23 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
-    let mut to_add= Vec::new();
+    let mut packages_to_add = Vec::new();
     for arg in &args[1..] {
-        if packages.contains(arg) {
+        if existing_packages.contains(arg) {
             println!("Skipping {}: already in home.nix", arg);
         } else {
-            to_add.push(arg);
+            packages_to_add.push(arg);
         }
     }
 
-    if to_add.len() == 0 {
+    if packages_to_add.len() == 0 {
         println!("Nothing to add to home.nix");
         return;
     }
 
-    println!("Adding {:?} to home.nix", to_add);
+    println!("Adding {:?} to home.nix", packages_to_add);
 
-    let result = nix_editor::write::addtoarr(&content, QUERY, to_add.into_iter().cloned().collect()).unwrap();
+    let result = nix_editor::write::addtoarr(&content, QUERY, packages_to_add.into_iter().cloned().collect()).unwrap();
     match fs::write(FILE, result) {
         Ok(..) => {}
         Err(error) => {
