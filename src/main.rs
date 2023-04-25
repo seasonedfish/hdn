@@ -11,11 +11,13 @@ fn print_error(message: String) {
 }
 
 fn main() {
+    println!("Using {FILE} as home.nix");
+
     let read_file_result = fs::read_to_string(FILE);
     let content = match read_file_result {
         Ok(content) => content,
         Err(error) => {
-            print_error(format!("Could not open {FILE}: {error}"));
+            print_error(format!("Could not open home.nix: {error}"));
             return;
         }
     };
@@ -23,7 +25,7 @@ fn main() {
     let packages: HashSet<String> = match nix_read_result {
         Ok(vec) => HashSet::from_iter(vec),
         Err(_error) => {
-            print_error(format!("Could not get values of {QUERY} in {FILE}"));
+            print_error(format!("Could not get values of {QUERY} in home.nix"));
             return;
         }
     };
