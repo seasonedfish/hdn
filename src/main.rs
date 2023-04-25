@@ -3,7 +3,6 @@ use std::collections::HashSet;
 use std::process::Command;
 use owo_colors::{OwoColorize};
 
-const FILE: &str = "/Users/fisher/Desktop/home.nix";
 const QUERY: &str = "home.packages";
 
 fn print_error(message: String) {
@@ -12,9 +11,13 @@ fn print_error(message: String) {
 }
 
 fn main() {
-    println!("Using {FILE} as home.nix");
+    let file = dirs::home_dir()
+        .expect("Home directory should exist")
+        .join(".config/home-manager/home.nix");
 
-    let fs_read_result = fs::read_to_string(FILE);
+    println!("Using {} as home.nix", file.display());
+
+    let fs_read_result = fs::read_to_string(file.clone());
     let content = match fs_read_result {
         Ok(content) => content,
         Err(error) => {
@@ -57,7 +60,7 @@ fn main() {
             return;
         }
     };
-    match fs::write(FILE, new_content) {
+    match fs::write(file.clone(), new_content) {
         Ok(..) => {}
         Err(error) => {
             print_error(format!("Could not write to home.nix: {error}"));
@@ -80,7 +83,7 @@ fn main() {
     } else {
         println!("Running home-manager switch resulted in an error, reverting home.nix");
 
-        match fs::write(FILE, content) {
+        match fs::write(file, content) {
             Ok(..) => {}
             Err(error) => {
                 print_error(format!("Could not write to home.nix: {error}"));
