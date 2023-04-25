@@ -9,7 +9,7 @@ fn main() {
     let content = match read_file_result {
         Ok(content) => content,
         Err(error) => {
-            println!("Could not open home.nix: {}", error);
+            eprintln!("Could not open home.nix: {}", error);
             return;
         }
     };
@@ -21,18 +21,18 @@ fn main() {
     let mut to_add= Vec::new();
     for arg in &args[1..] {
         if packages.contains(arg) {
-            println!("home.nix already contains {}, skipping it", arg);
+            println!("Skipping {}: already in home.nix", arg);
         } else {
             to_add.push(arg);
         }
     }
 
     if to_add.len() == 0 {
-        println!("nothing to add to home.nix, stopping");
+        println!("Nothing to add to home.nix");
         return;
     }
 
-    println!("adding {:?} to home.nix", to_add);
+    println!("Adding {:?} to home.nix", to_add);
 
     let result = nix_editor::write::addtoarr(&content, QUERY, to_add.into_iter().cloned().collect()).unwrap();
     fs::write(FILE, result).expect("Failed to write file");
