@@ -1,5 +1,6 @@
 use std::{env, fs};
 use std::collections::HashSet;
+use std::process::Command;
 use owo_colors::{OwoColorize};
 
 const FILE: &str = "/Users/fisher/Desktop/home.nix";
@@ -62,5 +63,29 @@ fn main() {
             print_error(format!("Could not write to home.nix: {error}"));
             return;
         }
+    }
+
+    let output = match Command::new("home-manager").arg("switch").output() {
+        Ok(output) => output,
+        Err(error) => {
+            print_error(format!("Could not run home-manager switch: {error}"));
+            return;
+        }
+    };
+
+    print!("{}", String::from_utf8(output.stdout).unwrap());
+
+    if output.status.success() {
+        println!("Successfully added packages and activated new generation");
+    } else {
+        println!("Running home-manager switch resulted in an error, reverting home.nix");
+
+        match fs::write(FILE, content) {
+            Ok(..) => {}
+            Err(error) => {
+                print_error(format!("Could not write to home.nix: {error}"));
+                return;
+            }
+        };
     }
 }
