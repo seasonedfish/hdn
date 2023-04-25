@@ -6,5 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anstream = "0.3.1"
+anstyle = "1.0.0"
 nix-editor = "0.3.0"
+owo-colors = "3.5.0"
 rnix = "0.11.0"

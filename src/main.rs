@@ -1,20 +1,32 @@
 use std::{env, fs};
 use std::collections::HashSet;
+use owo_colors::{OwoColorize};
 
 const FILE: &str = "/Users/fisher/Desktop/home.nix";
 const QUERY: &str = "home.packages";
+
+fn print_error(message: String) {
+    let error_prefix = "Error:".red().bold().to_string();
+    eprintln!("{error_prefix} {message}");
+}
 
 fn main() {
     let read_file_result = fs::read_to_string(FILE);
     let content = match read_file_result {
         Ok(content) => content,
         Err(error) => {
-            eprintln!("Could not open home.nix: {}", error);
+            print_error(format!("Could not open {FILE}: {error}"));
             return;
         }
     };
-
-    let packages: HashSet<String> = HashSet::from_iter(nix_editor::read::getarrvals(&content, QUERY).unwrap());
+    let nix_read_result = nix_editor::read::getarrvals(&content, QUERY);
+    let packages: HashSet<String> = match nix_read_result {
+        Ok(vec) => HashSet::from_iter(vec),
+        Err(_error) => {
+            print_error(format!("Could not get values of {QUERY} in {FILE}"));
+            return;
+        }
+    };
 
     let args: Vec<String> = env::args().collect();
 
