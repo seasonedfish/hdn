@@ -18,10 +18,13 @@ This will add `pkgs.hello` to your `home.packages` in `home.nix`, and call `home
 
 If `home-manager switch` fails, it will automatically roll back `home.nix` to its previous version. 
 
-## Assumptions
-This program assumes your `home.nix` lives in `~/.config/home-manager/`,
-and it contains the option `home.packages`, the set of packages to appear in the user environment.
-These assumptions should be satisfied with the default home-manager installation.
+## Requirements
+This program requires that:
+- you have `home-manger` on your PATH
+- `home.nix` lives in `~/.config/home-manager/`
+- `home.nix` contains the attribute `home.packages`, the list of packages in the user environment
+
+These requirements should be satisfied with the default home-manager installation.
 
 ## Disclaimer
 This program uses Rust, and I don't actually know how to program in Rust.
