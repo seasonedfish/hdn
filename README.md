@@ -26,11 +26,11 @@ This program uses Rust, and I don't actually know how to program in Rust.
 Someday I'll go back, actually learn Rust, and rewrite this, but for now, use at your own risk.
 
 ## Todos
-- Support old location for home.nix
-- Support remove subcommand
+- Support `~/.config/nixpkgs/` location for home.nix
+- Support "remove" subcommand
 - Show live stdout and stderr
-- Add help option
-- Reorganize code
+- Add "--help" option
+- Organize code into functions
 - Use rnix directly instead of `nix-editor`
-- Show home/nix diff
+- Show `home.nix` diff
 - Actually learn Rust
