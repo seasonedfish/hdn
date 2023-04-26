@@ -42,7 +42,7 @@ fn main() {
     let mut packages_to_add = Vec::new();
     for arg in args.iter().skip(2) {
         if existing_packages.contains(arg) {
-            println!("Skipping {}: already in home.nix", arg);
+            println!("Skipping {arg}: already in home.nix");
         } else {
             packages_to_add.push(arg);
         }
