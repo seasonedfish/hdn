@@ -36,7 +36,7 @@ fn main() {
     let existing_packages: HashSet<String> = match nix_read_result {
         Ok(vec) => HashSet::from_iter(vec),
         Err(_error) => {
-            print_error(format!("Could not get values of {QUERY} in home.nix"));
+            print_error(format!("Could not get values of {QUERY} attribute in home.nix"));
             return;
         }
     };
@@ -44,7 +44,7 @@ fn main() {
     let mut packages_to_add = Vec::new();
     for arg in args.iter().skip(2) {
         if existing_packages.contains(arg) {
-            println!("Skipping {arg}: already in home.nix");
+            println!("Skipping \"{arg}\": already in home.nix");
         } else {
             packages_to_add.push(arg);
         }
@@ -61,7 +61,7 @@ fn main() {
     let new_content = match nix_add_result {
         Ok(new_content) => new_content,
         Err(_error) => {
-            print_error(format!("Could not update nix for new packages"));
+            print_error(format!("Could not update {QUERY} attribute for new packages"));
             return;
         }
     };
