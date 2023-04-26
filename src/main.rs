@@ -31,6 +31,7 @@ fn main() {
             return;
         }
     };
+
     let nix_read_result = nix_editor::read::getarrvals(&content, QUERY);
     let existing_packages: HashSet<String> = match nix_read_result {
         Ok(vec) => HashSet::from_iter(vec),
@@ -64,6 +65,7 @@ fn main() {
             return;
         }
     };
+
     match fs::write(file.clone(), new_content) {
         Ok(..) => {}
         Err(error) => {
@@ -89,11 +91,9 @@ fn main() {
             |line| println!("{}", line.unwrap())
         );
     });
-
     stdout.lines().for_each(
         |line| println!("{}", line.unwrap())
     );
-
     thread.join().unwrap();
 
     if child.wait().unwrap().success() {
