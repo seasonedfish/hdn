@@ -79,18 +79,19 @@ fn main() {
         .stderr(Stdio::piped())
         .spawn()
         .expect("Should able to run home-manager switch");
+    println!("Running home-manager switch: PID {}", child.id());
 
     let stdout = BufReader::new(child.stdout.take().expect("Child process should have stdout"));
     let stderr = BufReader::new(child.stderr.take().expect("Child process should have stderr"));
 
     let thread = thread::spawn(move || {
         stderr.lines().for_each(
-            |line| println!("err: {}", line.unwrap())
+            |line| println!("{}", line.unwrap())
         );
     });
 
     stdout.lines().for_each(
-        |line| println!("out: {}", line.unwrap())
+        |line| println!("{}", line.unwrap())
     );
 
     thread.join().unwrap();
