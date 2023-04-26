@@ -1,6 +1,7 @@
-use std::{env, fs};
+use std::{env, fs, thread};
 use std::collections::HashSet;
-use std::process::Command;
+use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
 use owo_colors::{OwoColorize};
 
 const QUERY: &str = "home.packages";
@@ -71,18 +72,30 @@ fn main() {
         }
     }
 
-    let output = match Command::new("home-manager").arg("switch").output() {
-        Ok(output) => output,
-        Err(error) => {
-            print_error(format!("Could not run home-manager switch: {error}"));
-            return;
-        }
-    };
+    // https://stackoverflow.com/a/49063262
+    let mut child = Command::new("home-manager")
+        .arg("switch")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Should able to run home-manager switch");
 
-    print!("{}", String::from_utf8(output.stdout).unwrap());
-    print!("{}", String::from_utf8(output.stderr).unwrap());
+    let stdout = BufReader::new(child.stdout.take().expect("Child process should have stdout"));
+    let stderr = BufReader::new(child.stderr.take().expect("Child process should have stderr"));
 
-    if output.status.success() {
+    let thread = thread::spawn(move || {
+        stderr.lines().for_each(
+            |line| println!("err: {}", line.unwrap())
+        );
+    });
+
+    stdout.lines().for_each(
+        |line| println!("out: {}", line.unwrap())
+    );
+
+    thread.join().unwrap();
+
+    if child.wait().unwrap().success() {
         println!("Successfully added packages and activated new generation");
     } else {
         println!("Running home-manager switch resulted in an error, reverting home.nix");
