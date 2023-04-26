@@ -55,7 +55,7 @@ fn main() {
         return;
     }
 
-    println!("Adding {:?} to home.nix", packages_to_add);
+    println!("{}", format!("Adding {:?} to home.nix", packages_to_add).blue().bold());
 
     let nix_add_result = nix_editor::write::addtoarr(&content, QUERY, packages_to_add.into_iter().cloned().collect());
     let new_content = match nix_add_result {
@@ -97,7 +97,7 @@ fn main() {
     thread.join().unwrap();
 
     if child.wait().unwrap().success() {
-        println!("Successfully added packages and activated new generation");
+        println!("{}", "Successfully updated home.nix and activated generation".green().bold());
     } else {
         println!("Running home-manager switch resulted in an error, reverting home.nix");
 
