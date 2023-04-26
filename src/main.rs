@@ -80,6 +80,7 @@ fn main() {
     };
 
     print!("{}", String::from_utf8(output.stdout).unwrap());
+    print!("{}", String::from_utf8(output.stderr).unwrap());
 
     if output.status.success() {
         println!("Successfully added packages and activated new generation");
