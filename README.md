@@ -36,7 +36,6 @@ Someday I'll go back, actually learn Rust, and rewrite this, but for now, use at
 ## Todos
 - Support `~/.config/nixpkgs/` location for home.nix
 - Support "remove" subcommand
-- Show live stdout and stderr
 - Add "--help" option
 - Organize code into functions
 - Use rnix directly instead of `nix-editor`
