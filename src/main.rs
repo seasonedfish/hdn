@@ -1,7 +1,6 @@
-use std::{env, fs, thread};
+use std::{env, fs};
 use std::collections::HashSet;
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::process::{Command};
 use owo_colors::{OwoColorize};
 
 const QUERY: &str = "home.packages";
