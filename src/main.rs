@@ -1,7 +1,6 @@
-use std::{env, fs, thread};
+use std::{env, fs};
 use std::collections::HashSet;
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::process::{Command};
 use owo_colors::{OwoColorize};
 
 const QUERY: &str = "home.packages";
@@ -77,24 +76,9 @@ fn main() {
     // https://stackoverflow.com/a/49063262
     let mut child = Command::new("home-manager")
         .arg("switch")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .spawn()
         .expect("Should able to run home-manager switch");
     println!("Running home-manager switch: PID {}", child.id());
-
-    let stdout = BufReader::new(child.stdout.take().expect("Child process should have stdout"));
-    let stderr = BufReader::new(child.stderr.take().expect("Child process should have stderr"));
-
-    let thread = thread::spawn(move || {
-        stderr.lines().for_each(
-            |line| println!("{}", line.unwrap())
-        );
-    });
-    stdout.lines().for_each(
-        |line| println!("{}", line.unwrap())
-    );
-    thread.join().unwrap();
 
     if child.wait().unwrap().success() {
         println!("{}", "Successfully updated home.nix and activated generation".green().bold());
