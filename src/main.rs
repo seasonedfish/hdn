@@ -114,8 +114,8 @@ fn main() {
             add(packages);
         }
 
-        _ => {
-            print_error(String::from("only the \"add\" subcommand is supported currently"));
+        HdnSubcommand::Remove { packages: _packages } => {
+            print_error(String::from("the remove command isn't implemented yet"));
         }
     }
 }
