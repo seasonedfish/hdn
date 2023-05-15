@@ -23,7 +23,7 @@ struct HdnCli {
 }
 
 fn print_error(message: String) {
-    let error_prefix = "Error:".red().bold().to_string();
+    let error_prefix = "error:".red().bold().to_string();
     eprintln!("{error_prefix} {message}");
 }
 
@@ -37,7 +37,7 @@ fn add(packages: &Vec<String>) {
     let content = match fs_read_result {
         Ok(content) => content,
         Err(error) => {
-            print_error(format!("Could not open home.nix: {error}"));
+            print_error(format!("could not open home.nix: {error}"));
             return;
         }
     };
@@ -46,7 +46,7 @@ fn add(packages: &Vec<String>) {
     let existing_packages: HashSet<String> = match nix_read_result {
         Ok(vec) => HashSet::from_iter(vec),
         Err(_error) => {
-            print_error(format!("Could not get values of {QUERY} attribute in home.nix"));
+            print_error(format!("could not get values of {QUERY} attribute in home.nix"));
             return;
         }
     };
@@ -71,7 +71,7 @@ fn add(packages: &Vec<String>) {
     let new_content = match nix_add_result {
         Ok(new_content) => new_content,
         Err(_error) => {
-            print_error(format!("Could not update {QUERY} attribute for new packages"));
+            print_error(format!("could not update {QUERY} attribute for new packages"));
             return;
         }
     };
@@ -79,7 +79,7 @@ fn add(packages: &Vec<String>) {
     match fs::write(file.clone(), new_content) {
         Ok(..) => {}
         Err(error) => {
-            print_error(format!("Could not write to home.nix: {error}"));
+            print_error(format!("could not write to home.nix: {error}"));
             return;
         }
     }
@@ -99,7 +99,7 @@ fn add(packages: &Vec<String>) {
         match fs::write(file, content) {
             Ok(..) => {}
             Err(error) => {
-                print_error(format!("Could not write to home.nix: {error}"));
+                print_error(format!("could not write to home.nix: {error}"));
                 return;
             }
         };
@@ -115,7 +115,7 @@ fn main() {
         }
 
         _ => {
-            print_error(String::from("Only the \"add\" subcommand is supported currently"));
+            print_error(String::from("only the \"add\" subcommand is supported currently"));
         }
     }
 }
