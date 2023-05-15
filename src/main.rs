@@ -1,22 +1,33 @@
-use std::{env, fs};
+use std::{fs};
 use std::collections::HashSet;
 use std::process::{Command};
 use owo_colors::{OwoColorize};
+use clap::{Parser, Subcommand};
 
 const QUERY: &str = "home.packages";
+
+#[derive(Subcommand)]
+enum HdnSubcommand {
+    /// Add packages to home.nix, then run home-manager switch
+    Add {packages: Vec<String>},
+    /// Remove packages from home.nix, then run home-manager switch
+    Remove {packages: Vec<String>}
+}
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct HdnCli {
+    #[command(subcommand)]
+    subcommand: HdnSubcommand,
+}
 
 fn print_error(message: String) {
     let error_prefix = "Error:".red().bold().to_string();
     eprintln!("{error_prefix} {message}");
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 || args[1] != "add" {
-        print_error(String::from("Only the \"add\" subcommand is supported currently"));
-        return;
-    }
-
+fn add(packages: &Vec<String>) {
     let file = dirs::home_dir()
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
@@ -41,11 +52,11 @@ fn main() {
     };
 
     let mut packages_to_add = Vec::new();
-    for arg in args.iter().skip(2) {
-        if existing_packages.contains(arg) {
-            println!("Skipping \"{arg}\": already in home.nix");
+    for package in packages {
+        if existing_packages.contains(package) {
+            println!("Skipping \"{package}\": already in home.nix");
         } else {
-            packages_to_add.push(arg);
+            packages_to_add.push(package);
         }
     }
 
@@ -92,5 +103,19 @@ fn main() {
                 return;
             }
         };
+    }
+}
+
+fn main() {
+    let cli = HdnCli::parse();
+
+    match &cli.subcommand {
+        HdnSubcommand::Add {packages} => {
+            add(packages);
+        }
+
+        _ => {
+            print_error(String::from("Only the \"add\" subcommand is supported currently"));
+        }
     }
 }
