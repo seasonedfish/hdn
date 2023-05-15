@@ -9,7 +9,13 @@ const QUERY: &str = "home.packages";
 #[derive(Subcommand)]
 enum HdnSubcommand {
     /// Add packages to home.nix, then run home-manager switch
-    Add {packages: Vec<String>},
+    Add {
+        /// The packages to add, space separated
+        packages: Vec<String>,
+        /// Passes --show-trace to home-manager switch
+        #[clap(long, short, action)]
+        show_trace: bool
+    },
     /// Remove packages from home.nix, then run home-manager switch
     Remove {packages: Vec<String>}
 }
@@ -28,7 +34,7 @@ fn print_error(message: String) {
     eprintln!("{error_prefix} {message}");
 }
 
-fn add(packages: &Vec<String>) {
+fn add(packages: &Vec<String>, show_trace: &bool) {
     let file = dirs::home_dir()
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
@@ -85,10 +91,11 @@ fn add(packages: &Vec<String>) {
         }
     }
 
-    // https://stackoverflow.com/a/49063262
-    let mut child = Command::new("home-manager")
-        .arg("switch")
-        .spawn()
+    let mut command = Command::new("home-manager");
+    let command = command.arg("switch")
+        .arg(if *show_trace { "--show-trace" } else { "" });
+
+    let mut child = command.spawn()
         .expect("Should able to run home-manager switch");
     println!("Running home-manager switch: PID {}", child.id());
 
@@ -111,8 +118,8 @@ fn main() {
     let cli = HdnCli::parse();
 
     match &cli.subcommand {
-        HdnSubcommand::Add {packages} => {
-            add(packages);
+        HdnSubcommand::Add {packages, show_trace} => {
+            add(packages, show_trace);
         }
 
         HdnSubcommand::Remove { packages: _packages } => {
