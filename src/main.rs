@@ -15,7 +15,8 @@ enum HdnSubcommand {
 }
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author = "Fisher Sun")]
+#[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct HdnCli {
     #[command(subcommand)]
