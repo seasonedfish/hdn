@@ -145,7 +145,7 @@ enum AddError {
     NothingToUpdate
 }
 
-fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
+fn update(mode: UpdatePackagesMode, packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
     use crate::AddError::{CouldNotReadFile, CouldNotWriteToFile, UnsuccessfulAndNotRolledBack, UnsuccessfulButRolledBack, CouldNotUpdatePackages, NothingToUpdate};
 
     let file = dirs::home_dir()
@@ -154,7 +154,7 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
 
     let content = fs::read_to_string(file.clone()).map_err(CouldNotReadFile)?;
 
-    let new_content = update_packages(&content, packages, UpdatePackagesMode::Add)
+    let new_content = update_packages(&content, packages, mode)
         .map_err(CouldNotUpdatePackages)?;
 
     if new_content.eq(&content) {
@@ -173,6 +173,10 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
         return Err(UnsuccessfulButRolledBack(error));
     }
     Ok(())
+}
+
+fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
+    update(UpdatePackagesMode::Add, packages, show_trace)
 }
 
 #[derive(Error, Debug)]
