@@ -2,12 +2,9 @@ use std::{fs, io};
 use std::collections::HashSet;
 use std::error::Error;
 use std::process::{Command};
-use anyhow::{anyhow, Context};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
 use thiserror::Error;
-use crate::AddError::{CouldNotReadFile, CouldNotReadNix, CouldNotWriteNix, CouldNotWriteToFile, UnsuccessfulAndNotRolledBack, UnsuccessfulButRolledBack};
-use crate::RunHomeManagerSwitchError::{CouldNotRun, OSError, Unsuccessful};
 
 const QUERY: &str = "home.packages";
 
@@ -61,6 +58,8 @@ enum RunHomeManagerSwitchError {
 }
 
 fn run_home_manager_switch(show_trace: &bool) -> Result<(), RunHomeManagerSwitchError> {
+    use crate::RunHomeManagerSwitchError::{CouldNotRun, OSError, Unsuccessful};
+
     let mut command = Command::new("home-manager");
     let command = command.arg("switch");
     let command = if *show_trace {command.arg("--show-trace")} else {command};
@@ -78,56 +77,97 @@ fn run_home_manager_switch(show_trace: &bool) -> Result<(), RunHomeManagerSwitch
     Ok(())
 }
 
-#[derive(Error, Debug)]
-enum AddError {
-    #[error("could not read home.nix")]
-    CouldNotReadFile(#[source] io::Error),
-    #[error("could not read values of home.packages attribute in home.nix")]
-    CouldNotReadNix(#[source] nix_editor::read::ReadError),
-    #[error("could not update home.packages attribute for new packages")]
-    CouldNotWriteNix(#[source] nix_editor::write::WriteError),
-    #[error("could not write to home.nix")]
-    CouldNotWriteToFile(#[source] io::Error),
-    #[error("running home-manager switch errored, and during the rollback of home.nix, another error occurred")]
-    UnsuccessfulAndNotRolledBack(#[source] io::Error),
-    #[error("running home-manager switch errored; your home.nix has been rolled back")]
-    UnsuccessfulButRolledBack(#[source] RunHomeManagerSwitchError)
+enum UpdatePackagesMode {
+    Add,
+    Remove
 }
 
-fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
-    let file = dirs::home_dir()
-        .expect("Home directory should exist")
-        .join(".config/home-manager/home.nix");
-
-    let content = fs::read_to_string(file.clone())
-        .map_err(CouldNotReadFile)?;
+#[derive(Error, Debug)]
+enum UpdatePackagesError {
+    #[error("could not read values of home.packages attribute in home.nix")]
+    CouldNotReadNix(#[source] nix_editor::read::ReadError),
+    #[error("could not write home.packages attribute for new packages")]
+    CouldNotWriteNix(#[source] nix_editor::write::WriteError),
+    #[error("nothing to update")]
+    NothingToUpdate
+}
+fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackagesMode) -> Result<String, UpdatePackagesError> {
+    use crate::UpdatePackagesError::{CouldNotReadNix, CouldNotWriteNix, NothingToUpdate};
+    use crate::UpdatePackagesMode::{Add, Remove};
 
     let existing_packages: HashSet<String> = HashSet::from_iter(
         nix_editor::read::getarrvals(&content, QUERY)
             .map_err(CouldNotReadNix)?
     );
 
-    let mut packages_to_add = Vec::new();
-    for package in packages {
-        if existing_packages.contains(package) {
-            println!("Skipping \"{package}\": already in home.nix");
-        } else {
-            packages_to_add.push(package);
+    return match mode {
+        Add => {
+            let transformed_packages: Vec<&String> = packages.iter()
+                .filter(|&p| !existing_packages.contains(p))
+                .collect();
+
+            if transformed_packages.is_empty() {
+                return Err(NothingToUpdate);
+            }
+
+            nix_editor::write::addtoarr(
+                &content,
+                QUERY,
+                transformed_packages.into_iter().cloned().collect()
+            ).map_err(CouldNotWriteNix)
+        }
+        Remove => {
+            let transformed_packages: Vec<&String> = packages.iter()
+                .filter(|&p| existing_packages.contains(p))
+                .collect();
+
+            if transformed_packages.is_empty() {
+                return Err(NothingToUpdate);
+            }
+
+            nix_editor::write::rmarr(
+                &content,
+                QUERY,
+                transformed_packages.into_iter().cloned().collect()
+            ).map_err(CouldNotWriteNix)
         }
     }
+}
 
-    if packages_to_add.is_empty() {
-        println!("Nothing to add to home.nix");
-        return Ok(());
-    }
+#[derive(Error, Debug)]
+enum AddError {
+    #[error("could not read home.nix")]
+    CouldNotReadFile(#[source] io::Error),
+    #[error("could not write to home.nix")]
+    CouldNotWriteToFile(#[source] io::Error),
+    #[error("running home-manager switch errored, and during the rollback of home.nix, another error occurred")]
+    UnsuccessfulAndNotRolledBack(#[source] io::Error),
+    #[error("running home-manager switch errored; your home.nix has been rolled back")]
+    UnsuccessfulButRolledBack(#[source] RunHomeManagerSwitchError),
+    #[error("could not update home.packages attribute in home.nix")]
+    CouldNotUpdatePackages(#[source] UpdatePackagesError),
+    #[error("nothing to update in home.nix, home-manager switch was not run")]
+    NothingToUpdate(#[source] UpdatePackagesError)
+}
 
-    println!("{}", format!("Adding {:?} to home.nix", packages_to_add).bold());
+fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
+    use crate::AddError::{CouldNotReadFile, CouldNotWriteToFile, UnsuccessfulAndNotRolledBack, UnsuccessfulButRolledBack, CouldNotUpdatePackages, NothingToUpdate};
 
-    let new_content =  nix_editor::write::addtoarr(
-        &content,
-        QUERY,
-        packages_to_add.into_iter().cloned().collect()
-    ).map_err(CouldNotWriteNix)?;
+    let file = dirs::home_dir()
+        .expect("Home directory should exist")
+        .join(".config/home-manager/home.nix");
+
+    let content = fs::read_to_string(file.clone()).map_err(CouldNotReadFile)?;
+
+    let new_content = match update_packages(&content, packages, UpdatePackagesMode::Add) {
+        Ok(new_content) => new_content,
+        Err(UpdatePackagesError::NothingToUpdate) => {
+            return Err(NothingToUpdate(UpdatePackagesError::NothingToUpdate))
+        },
+        Err(e) => {
+            return Err(CouldNotUpdatePackages(e))
+        }
+    };
 
     fs::write(file.clone(), new_content).map_err(CouldNotWriteToFile)?;
 
