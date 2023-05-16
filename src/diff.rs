@@ -11,7 +11,7 @@ impl fmt::Display for Line {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
             None => write!(f, "    "),
-            Some(idx) => write!(f, "{:<4}", idx + 1),
+            Some(idx) => write!(f, "{:>4}", idx + 1),
         }
     }
 }
@@ -31,8 +31,7 @@ pub fn print_diff(string1: &String, string2: &String) {
                     ChangeTag::Equal => (" ", Style::new()),
                 };
                 print!(
-                    "{}{} |{}",
-                    Line(change.old_index()),
+                    "{}|{}",
                     Line(change.new_index()),
                     style.style(sign),
                 );

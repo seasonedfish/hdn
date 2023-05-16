@@ -162,6 +162,7 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
     }
 
     diff::print_diff(&content, &new_content);
+    println!();
 
     fs::write(file.clone(), new_content).map_err(CouldNotWriteToFile)?;
 
