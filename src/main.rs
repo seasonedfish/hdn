@@ -88,11 +88,9 @@ enum UpdatePackagesError {
     CouldNotReadNix(#[source] nix_editor::read::ReadError),
     #[error("could not write home.packages attribute for new packages")]
     CouldNotWriteNix(#[source] nix_editor::write::WriteError),
-    #[error("nothing to update")]
-    NothingToUpdate
 }
 fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackagesMode) -> Result<String, UpdatePackagesError> {
-    use crate::UpdatePackagesError::{CouldNotReadNix, CouldNotWriteNix, NothingToUpdate};
+    use crate::UpdatePackagesError::{CouldNotReadNix, CouldNotWriteNix};
     use crate::UpdatePackagesMode::{Add, Remove};
 
     let existing_packages: HashSet<String> = HashSet::from_iter(
@@ -106,10 +104,6 @@ fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackage
                 .filter(|&p| !existing_packages.contains(p))
                 .collect();
 
-            if transformed_packages.is_empty() {
-                return Err(NothingToUpdate);
-            }
-
             nix_editor::write::addtoarr(
                 &content,
                 QUERY,
@@ -120,10 +114,6 @@ fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackage
             let transformed_packages: Vec<&String> = packages.iter()
                 .filter(|&p| existing_packages.contains(p))
                 .collect();
-
-            if transformed_packages.is_empty() {
-                return Err(NothingToUpdate);
-            }
 
             nix_editor::write::rmarr(
                 &content,
@@ -147,7 +137,7 @@ enum AddError {
     #[error("could not update home.packages attribute in home.nix")]
     CouldNotUpdatePackages(#[source] UpdatePackagesError),
     #[error("nothing to update in home.nix, home-manager switch was not run")]
-    NothingToUpdate(#[source] UpdatePackagesError)
+    NothingToUpdate
 }
 
 fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
@@ -159,15 +149,12 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
 
     let content = fs::read_to_string(file.clone()).map_err(CouldNotReadFile)?;
 
-    let new_content = match update_packages(&content, packages, UpdatePackagesMode::Add) {
-        Ok(new_content) => new_content,
-        Err(UpdatePackagesError::NothingToUpdate) => {
-            return Err(NothingToUpdate(UpdatePackagesError::NothingToUpdate))
-        },
-        Err(e) => {
-            return Err(CouldNotUpdatePackages(e))
-        }
-    };
+    let new_content = update_packages(&content, packages, UpdatePackagesMode::Add)
+        .map_err(CouldNotUpdatePackages)?;
+
+    if new_content.eq(&content) {
+        return Err(NothingToUpdate);
+    }
 
     fs::write(file.clone(), new_content).map_err(CouldNotWriteToFile)?;
 
