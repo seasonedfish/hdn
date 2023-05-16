@@ -1,9 +1,13 @@
-use std::{fs};
+use std::{fs, io};
 use std::collections::HashSet;
+use std::error::Error;
 use std::process::{Command};
 use anyhow::{anyhow, Context};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
+use thiserror::Error;
+use crate::AddError::{CouldNotReadFile, CouldNotReadNix, CouldNotWriteNix, CouldNotWriteToFile, UnsuccessfulAndNotRolledBack, UnsuccessfulButRolledBack};
+use crate::RunHomeManagerSwitchError::{CouldNotRun, OSError, Unsuccessful};
 
 const QUERY: &str = "home.packages";
 
@@ -30,39 +34,77 @@ struct HdnCli {
     subcommand: HdnSubcommand,
 }
 
-fn print_error(message: String) {
+fn print_error<T: Error>(error: T) {
     let error_prefix = "error:".red().bold().to_string();
-    eprintln!("{error_prefix} {message}");
+    eprintln!("{error_prefix} {}", error);
+
+    fn print_sources<T: Error>(error: T) {
+        eprintln!("caused by: error: {}", error);
+
+        if let Some(source) = error.source() {
+            print_sources(source);
+        }
+    }
+    if let Some(source) = error.source() {
+        print_sources(source);
+    }
 }
 
-fn run_home_manager_switch(show_trace: &bool) -> Result<(), anyhow::Error> {
+#[derive(Error, Debug)]
+enum RunHomeManagerSwitchError {
+    #[error("Could not run home-manager switch")]
+    CouldNotRun(#[source] io::Error),
+    #[error("OS error occurred while running home-manager switch")]
+    OSError(#[source] io::Error),
+    #[error("home-manager switch returned a non-zero exit code")]
+    Unsuccessful
+}
+
+fn run_home_manager_switch(show_trace: &bool) -> Result<(), RunHomeManagerSwitchError> {
     let mut command = Command::new("home-manager");
     let command = command.arg("switch");
     let command = if *show_trace {command.arg("--show-trace")} else {command};
 
     let mut child = command
-        .spawn()?;
+        .spawn()
+        .map_err(CouldNotRun)?;
     println!("Running home-manager switch: PID {}", child.id());
 
-    let exit_status = child.wait()?;
+    let exit_status = child.wait().map_err(OSError)?;
 
     if !exit_status.success() {
-        return Err(anyhow!("home-manager switch returned non-zero exit code"));
+        return Err(Unsuccessful);
     }
     Ok(())
 }
 
-fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), anyhow::Error> {
+#[derive(Error, Debug)]
+enum AddError {
+    #[error("could not read home.nix")]
+    CouldNotReadFile(#[source] io::Error),
+    #[error("could not read values of home.packages attribute in home.nix")]
+    CouldNotReadNix(#[source] nix_editor::read::ReadError),
+    #[error("could not update home.packages attribute for new packages")]
+    CouldNotWriteNix(#[source] nix_editor::write::WriteError),
+    #[error("could not write to home.nix")]
+    CouldNotWriteToFile(#[source] io::Error),
+    #[error("running home-manager switch errored, and during the rollback of home.nix, another error occurred")]
+    UnsuccessfulAndNotRolledBack(#[source] io::Error),
+    #[error("running home-manager switch errored; your home.nix has been rolled back")]
+    UnsuccessfulButRolledBack(#[source] RunHomeManagerSwitchError)
+}
+
+fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
     let file = dirs::home_dir()
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
 
     let content = fs::read_to_string(file.clone())
-        .with_context(|| "could not open home.nix")?;
+        .map_err(CouldNotReadFile)?;
 
     let existing_packages: HashSet<String> = HashSet::from_iter(
         nix_editor::read::getarrvals(&content, QUERY)
-            .with_context(|| format!("could not get values of {QUERY} attribute in home.nix"))?
+            .map_err(CouldNotReadNix)?
     );
 
     let mut packages_to_add = Vec::new();
@@ -85,24 +127,27 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), anyhow::Error> {
         &content,
         QUERY,
         packages_to_add.into_iter().cloned().collect()
-    ).with_context(|| format!("could not update {QUERY} attribute for new packages"))?;
+    ).map_err(CouldNotWriteNix)?;
 
-
-    fs::write(file.clone(), new_content).with_context(|| "could not write to home.nix:")?;
+    fs::write(file.clone(), new_content).map_err(CouldNotWriteToFile)?;
 
     match run_home_manager_switch(show_trace) {
         Ok(()) => {
             println!("{}", "Successfully updated home.nix and activated generation".bold());
             Ok(())
         }
-        Err(..) => {
+        Err(error) => {
             fs::write(file, content)
-                .with_context(|| "Running home-manager switch resulted in an error. During the rollback of home.nix, another error occurred.")?;
+                .map_err(UnsuccessfulAndNotRolledBack)?;
 
-            Err(anyhow!("Running home-manager switch resulted in an error. Your home.nix has been rolled back."))
+            Err(UnsuccessfulButRolledBack(error))
         }
     }
 }
+
+#[derive(Error, Debug)]
+#[error("this command isn't implemented yet")]
+struct NotImplementedError;
 
 fn main() {
     let cli = HdnCli::parse();
@@ -110,12 +155,12 @@ fn main() {
     match &cli.subcommand {
         HdnSubcommand::Add {packages, show_trace} => {
             if let Err(error) = add(packages, show_trace) {
-                print_error(error.to_string());
+                print_error(error);
             }
         }
 
         HdnSubcommand::Remove { packages: _packages } => {
-            print_error(String::from("the remove command isn't implemented yet"));
+            print_error(NotImplementedError);
         }
     }
 }
