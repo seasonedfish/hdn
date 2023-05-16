@@ -1,22 +1,40 @@
-use std::{env, fs};
+use std::{fs};
 use std::collections::HashSet;
 use std::process::{Command};
 use owo_colors::{OwoColorize};
+use clap::{Parser, Subcommand};
 
 const QUERY: &str = "home.packages";
 
+#[derive(Subcommand)]
+enum HdnSubcommand {
+    /// Add packages to home.nix, then run home-manager switch
+    Add {
+        /// The packages to add, space separated
+        packages: Vec<String>,
+        /// Passes --show-trace to home-manager switch
+        #[clap(long, short, action)]
+        show_trace: bool
+    },
+    /// Remove packages from home.nix, then run home-manager switch
+    Remove {packages: Vec<String>}
+}
+
+#[derive(Parser)]
+#[command(author = "Fisher Sun")]
+#[command(version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct HdnCli {
+    #[command(subcommand)]
+    subcommand: HdnSubcommand,
+}
+
 fn print_error(message: String) {
-    let error_prefix = "Error:".red().bold().to_string();
+    let error_prefix = "error:".red().bold().to_string();
     eprintln!("{error_prefix} {message}");
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 || args[1] != "add" {
-        print_error(String::from("Only the \"add\" subcommand is supported currently"));
-        return;
-    }
-
+fn add(packages: &Vec<String>, show_trace: &bool) {
     let file = dirs::home_dir()
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
@@ -26,7 +44,7 @@ fn main() {
     let content = match fs_read_result {
         Ok(content) => content,
         Err(error) => {
-            print_error(format!("Could not open home.nix: {error}"));
+            print_error(format!("could not open home.nix: {error}"));
             return;
         }
     };
@@ -35,17 +53,17 @@ fn main() {
     let existing_packages: HashSet<String> = match nix_read_result {
         Ok(vec) => HashSet::from_iter(vec),
         Err(_error) => {
-            print_error(format!("Could not get values of {QUERY} attribute in home.nix"));
+            print_error(format!("could not get values of {QUERY} attribute in home.nix"));
             return;
         }
     };
 
     let mut packages_to_add = Vec::new();
-    for arg in args.iter().skip(2) {
-        if existing_packages.contains(arg) {
-            println!("Skipping \"{arg}\": already in home.nix");
+    for package in packages {
+        if existing_packages.contains(package) {
+            println!("Skipping \"{package}\": already in home.nix");
         } else {
-            packages_to_add.push(arg);
+            packages_to_add.push(package);
         }
     }
 
@@ -60,7 +78,7 @@ fn main() {
     let new_content = match nix_add_result {
         Ok(new_content) => new_content,
         Err(_error) => {
-            print_error(format!("Could not update {QUERY} attribute for new packages"));
+            print_error(format!("could not update {QUERY} attribute for new packages"));
             return;
         }
     };
@@ -68,15 +86,16 @@ fn main() {
     match fs::write(file.clone(), new_content) {
         Ok(..) => {}
         Err(error) => {
-            print_error(format!("Could not write to home.nix: {error}"));
+            print_error(format!("could not write to home.nix: {error}"));
             return;
         }
     }
 
-    // https://stackoverflow.com/a/49063262
-    let mut child = Command::new("home-manager")
-        .arg("switch")
-        .spawn()
+    let mut command = Command::new("home-manager");
+    let command = command.arg("switch");
+    let command = if *show_trace {command.arg("--show-trace")} else {command};
+
+    let mut child = command.spawn()
         .expect("Should able to run home-manager switch");
     println!("Running home-manager switch: PID {}", child.id());
 
@@ -88,9 +107,23 @@ fn main() {
         match fs::write(file, content) {
             Ok(..) => {}
             Err(error) => {
-                print_error(format!("Could not write to home.nix: {error}"));
+                print_error(format!("could not write to home.nix: {error}"));
                 return;
             }
         };
+    }
+}
+
+fn main() {
+    let cli = HdnCli::parse();
+
+    match &cli.subcommand {
+        HdnSubcommand::Add {packages, show_trace} => {
+            add(packages, show_trace);
+        }
+
+        HdnSubcommand::Remove { packages: _packages } => {
+            print_error(String::from("the remove command isn't implemented yet"));
+        }
     }
 }
