@@ -72,7 +72,7 @@ fn add(packages: &Vec<String>, show_trace: &bool) {
         return;
     }
 
-    println!("{}", format!("Adding {:?} to home.nix", packages_to_add).blue().bold());
+    println!("{}", format!("Adding {:?} to home.nix", packages_to_add).bold());
 
     let nix_add_result = nix_editor::write::addtoarr(&content, QUERY, packages_to_add.into_iter().cloned().collect());
     let new_content = match nix_add_result {
@@ -100,7 +100,7 @@ fn add(packages: &Vec<String>, show_trace: &bool) {
     println!("Running home-manager switch: PID {}", child.id());
 
     if child.wait().unwrap().success() {
-        println!("{}", "Successfully updated home.nix and activated generation".green().bold());
+        println!("{}", "Successfully updated home.nix and activated generation".bold());
     } else {
         println!("Running home-manager switch resulted in an error, reverting home.nix");
 
