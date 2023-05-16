@@ -21,7 +21,13 @@ enum HdnSubcommand {
         show_trace: bool
     },
     /// Remove packages from home.nix, then run home-manager switch
-    Remove {packages: Vec<String>}
+    Remove {
+        /// The packages to remove, space separated
+        packages: Vec<String>,
+        /// Passes --show-trace to home-manager switch
+        #[clap(long, short, action)]
+        show_trace: bool
+    }
 }
 
 #[derive(Parser)]
@@ -179,27 +185,28 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
     update(UpdateNixMode::Add, packages, show_trace)
 }
 
-#[derive(Error, Debug)]
-#[error("this command isn't implemented yet")]
-struct NotImplementedError;
+fn remove(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+    update(UpdateNixMode::Remove, packages, show_trace)
+}
 
 fn main() {
     let cli = HdnCli::parse();
 
-    match &cli.subcommand {
+    let result = match &cli.subcommand {
         HdnSubcommand::Add {packages, show_trace} => {
-            match add(packages, show_trace) {
-                Err(error) => {
-                    print_error(error);
-                }
-                Ok(()) => {
-                    println!("{}", "Successfully updated home.nix and activated generation".bold());
-                }
-            }
+            add(packages, show_trace)
         }
 
-        HdnSubcommand::Remove { packages: _packages } => {
-            print_error(NotImplementedError);
+        HdnSubcommand::Remove { packages, show_trace} => {
+            remove(packages, show_trace)
         }
-    }
+    };
+    match result {
+        Err(error) => {
+            print_error(error);
+        }
+        Ok(()) => {
+            println!("{}", "Successfully updated home.nix and activated generation".bold());
+        }
+    };
 }
