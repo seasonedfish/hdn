@@ -1,6 +1,7 @@
 use std::{fs};
 use std::collections::HashSet;
 use std::process::{Command};
+use anyhow::{anyhow, Context};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
 
@@ -34,28 +35,35 @@ fn print_error(message: String) {
     eprintln!("{error_prefix} {message}");
 }
 
-fn add(packages: &Vec<String>, show_trace: &bool) {
+fn run_home_manager_switch(show_trace: &bool) -> Result<(), anyhow::Error> {
+    let mut command = Command::new("home-manager");
+    let command = command.arg("switch");
+    let command = if *show_trace {command.arg("--show-trace")} else {command};
+
+    let mut child = command
+        .spawn()?;
+    println!("Running home-manager switch: PID {}", child.id());
+
+    let exit_status = child.wait()?;
+
+    if !exit_status.success() {
+        return Err(anyhow!("home-manager switch returned non-zero exit code"));
+    }
+    Ok(())
+}
+
+fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), anyhow::Error> {
     let file = dirs::home_dir()
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
 
-    let fs_read_result = fs::read_to_string(file.clone());
-    let content = match fs_read_result {
-        Ok(content) => content,
-        Err(error) => {
-            print_error(format!("could not open home.nix: {error}"));
-            return;
-        }
-    };
+    let content = fs::read_to_string(file.clone())
+        .with_context(|| "could not open home.nix")?;
 
-    let nix_read_result = nix_editor::read::getarrvals(&content, QUERY);
-    let existing_packages: HashSet<String> = match nix_read_result {
-        Ok(vec) => HashSet::from_iter(vec),
-        Err(_error) => {
-            print_error(format!("could not get values of {QUERY} attribute in home.nix"));
-            return;
-        }
-    };
+    let existing_packages: HashSet<String> = HashSet::from_iter(
+        nix_editor::read::getarrvals(&content, QUERY)
+            .with_context(|| format!("could not get values of {QUERY} attribute in home.nix"))?
+    );
 
     let mut packages_to_add = Vec::new();
     for package in packages {
@@ -68,48 +76,31 @@ fn add(packages: &Vec<String>, show_trace: &bool) {
 
     if packages_to_add.is_empty() {
         println!("Nothing to add to home.nix");
-        return;
+        return Ok(());
     }
 
     println!("{}", format!("Adding {:?} to home.nix", packages_to_add).bold());
 
-    let nix_add_result = nix_editor::write::addtoarr(&content, QUERY, packages_to_add.into_iter().cloned().collect());
-    let new_content = match nix_add_result {
-        Ok(new_content) => new_content,
-        Err(_error) => {
-            print_error(format!("could not update {QUERY} attribute for new packages"));
-            return;
+    let new_content =  nix_editor::write::addtoarr(
+        &content,
+        QUERY,
+        packages_to_add.into_iter().cloned().collect()
+    ).with_context(|| format!("could not update {QUERY} attribute for new packages"))?;
+
+
+    fs::write(file.clone(), new_content).with_context(|| "could not write to home.nix:")?;
+
+    match run_home_manager_switch(show_trace) {
+        Ok(()) => {
+            println!("{}", "Successfully updated home.nix and activated generation".bold());
+            Ok(())
         }
-    };
+        Err(..) => {
+            fs::write(file, content)
+                .with_context(|| "Running home-manager switch resulted in an error. During the rollback of home.nix, another error occurred.")?;
 
-    match fs::write(file.clone(), new_content) {
-        Ok(..) => {}
-        Err(error) => {
-            print_error(format!("could not write to home.nix: {error}"));
-            return;
+            Err(anyhow!("Running home-manager switch resulted in an error. Your home.nix has been rolled back."))
         }
-    }
-
-    let mut command = Command::new("home-manager");
-    let command = command.arg("switch");
-    let command = if *show_trace {command.arg("--show-trace")} else {command};
-
-    let mut child = command.spawn()
-        .expect("Should able to run home-manager switch");
-    println!("Running home-manager switch: PID {}", child.id());
-
-    if child.wait().unwrap().success() {
-        println!("{}", "Successfully updated home.nix and activated generation".bold());
-    } else {
-        println!("Running home-manager switch resulted in an error, reverting home.nix");
-
-        match fs::write(file, content) {
-            Ok(..) => {}
-            Err(error) => {
-                print_error(format!("could not write to home.nix: {error}"));
-                #[allow(clippy::needless_return)] return;
-            }
-        };
     }
 }
 
@@ -118,7 +109,9 @@ fn main() {
 
     match &cli.subcommand {
         HdnSubcommand::Add {packages, show_trace} => {
-            add(packages, show_trace);
+            if let Err(error) = add(packages, show_trace) {
+                print_error(error.to_string());
+            }
         }
 
         HdnSubcommand::Remove { packages: _packages } => {
