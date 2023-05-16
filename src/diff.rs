@@ -180,8 +180,6 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 END OF TERMS AND CONDITIONS
  */
 use std::fmt;
-use std::fs::read;
-use std::process::exit;
 use owo_colors::{OwoColorize, Style};
 
 use similar::{ChangeTag, TextDiff};
