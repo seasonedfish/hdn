@@ -166,18 +166,13 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
 
     fs::write(file.clone(), new_content).map_err(CouldNotWriteToFile)?;
 
-    match run_home_manager_switch(show_trace) {
-        Ok(()) => {
-            println!("{}", "Successfully updated home.nix and activated generation".bold());
-            Ok(())
-        }
-        Err(error) => {
-            fs::write(file, content)
-                .map_err(UnsuccessfulAndNotRolledBack)?;
+    if let Err(error) = run_home_manager_switch(show_trace) {
+        fs::write(file, content)
+            .map_err(UnsuccessfulAndNotRolledBack)?;
 
-            Err(UnsuccessfulButRolledBack(error))
-        }
+        return Err(UnsuccessfulButRolledBack(error));
     }
+    Ok(())
 }
 
 #[derive(Error, Debug)]
@@ -189,8 +184,13 @@ fn main() {
 
     match &cli.subcommand {
         HdnSubcommand::Add {packages, show_trace} => {
-            if let Err(error) = add(packages, show_trace) {
-                print_error(error);
+            match add(packages, show_trace) {
+                Err(error) => {
+                    print_error(error);
+                }
+                Ok(()) => {
+                    println!("{}", "Successfully updated home.nix and activated generation".bold());
+                }
             }
         }
 
