@@ -1,3 +1,5 @@
+pub mod diff;
+
 use std::{fs, io};
 use std::error::Error;
 use std::process::{Command};
@@ -158,6 +160,8 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
     if new_content.eq(&content) {
         return Err(NothingToUpdate);
     }
+
+    diff::print_diff(&content, &new_content);
 
     fs::write(file.clone(), new_content).map_err(CouldNotWriteToFile)?;
 
