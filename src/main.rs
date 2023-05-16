@@ -79,7 +79,7 @@ fn run_home_manager_switch(show_trace: &bool) -> Result<(), RunHomeManagerSwitch
     Ok(())
 }
 
-enum UpdatePackagesMode {
+enum UpdateNixMode {
     Add,
     Remove
 }
@@ -92,9 +92,9 @@ enum UpdatePackagesError {
     CouldNotWriteNix(#[source] nix_editor::write::WriteError),
 }
 
-fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackagesMode) -> Result<String, UpdatePackagesError> {
+fn update_nix(content: &String, packages: &Vec<String>, mode: UpdateNixMode) -> Result<String, UpdatePackagesError> {
     use crate::UpdatePackagesError::{CouldNotReadNix, CouldNotWriteNix};
-    use crate::UpdatePackagesMode::{Add, Remove};
+    use crate::UpdateNixMode::{Add, Remove};
 
     let packages: IndexSet<&String> = IndexSet::from_iter(packages);
 
@@ -130,7 +130,7 @@ fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackage
 }
 
 #[derive(Error, Debug)]
-enum AddError {
+enum HdnError {
     #[error("could not read home.nix")]
     CouldNotReadFile(#[source] io::Error),
     #[error("could not write to home.nix")]
@@ -145,8 +145,8 @@ enum AddError {
     NothingToUpdate
 }
 
-fn update(mode: UpdatePackagesMode, packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
-    use crate::AddError::{CouldNotReadFile, CouldNotWriteToFile, UnsuccessfulAndNotRolledBack, UnsuccessfulButRolledBack, CouldNotUpdatePackages, NothingToUpdate};
+fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+    use crate::HdnError::{CouldNotReadFile, CouldNotWriteToFile, UnsuccessfulAndNotRolledBack, UnsuccessfulButRolledBack, CouldNotUpdatePackages, NothingToUpdate};
 
     let file = dirs::home_dir()
         .expect("Home directory should exist")
@@ -154,7 +154,7 @@ fn update(mode: UpdatePackagesMode, packages: &Vec<String>, show_trace: &bool) -
 
     let content = fs::read_to_string(file.clone()).map_err(CouldNotReadFile)?;
 
-    let new_content = update_packages(&content, packages, mode)
+    let new_content = update_nix(&content, packages, mode)
         .map_err(CouldNotUpdatePackages)?;
 
     if new_content.eq(&content) {
@@ -175,8 +175,8 @@ fn update(mode: UpdatePackagesMode, packages: &Vec<String>, show_trace: &bool) -
     Ok(())
 }
 
-fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), AddError> {
-    update(UpdatePackagesMode::Add, packages, show_trace)
+fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+    update(UpdateNixMode::Add, packages, show_trace)
 }
 
 #[derive(Error, Debug)]
