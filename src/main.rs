@@ -1,9 +1,9 @@
 use std::{fs, io};
-use std::collections::HashSet;
 use std::error::Error;
 use std::process::{Command};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
+use indexmap::IndexSet;
 use thiserror::Error;
 
 const QUERY: &str = "home.packages";
@@ -89,18 +89,21 @@ enum UpdatePackagesError {
     #[error("could not write home.packages attribute for new packages")]
     CouldNotWriteNix(#[source] nix_editor::write::WriteError),
 }
+
 fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackagesMode) -> Result<String, UpdatePackagesError> {
     use crate::UpdatePackagesError::{CouldNotReadNix, CouldNotWriteNix};
     use crate::UpdatePackagesMode::{Add, Remove};
 
-    let existing_packages: HashSet<String> = HashSet::from_iter(
+    let packages: IndexSet<&String> = IndexSet::from_iter(packages);
+
+    let existing_packages: IndexSet<String> = IndexSet::from_iter(
         nix_editor::read::getarrvals(&content, QUERY)
             .map_err(CouldNotReadNix)?
     );
 
     return match mode {
         Add => {
-            let transformed_packages: Vec<&String> = packages.iter()
+            let transformed_packages: Vec<&String> = packages.into_iter()
                 .filter(|&p| !existing_packages.contains(p))
                 .collect();
 
@@ -111,7 +114,7 @@ fn update_packages(content: &String, packages: &Vec<String>, mode: UpdatePackage
             ).map_err(CouldNotWriteNix)
         }
         Remove => {
-            let transformed_packages: Vec<&String> = packages.iter()
+            let transformed_packages: Vec<&String> = packages.into_iter()
                 .filter(|&p| existing_packages.contains(p))
                 .collect();
 

@@ -337,6 +337,7 @@ dependencies = [
  "clap 4.2.7",
  "dirs",
  "exitcode",
+ "indexmap",
  "nix-editor",
  "owo-colors",
  "thiserror",
@@ -378,6 +379,16 @@ dependencies = [
  "thread_local",
  "walkdir",
  "winapi-util",
+]
+
+[[package]]
+name = "indexmap"
+version = "1.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
+dependencies = [
+ "autocfg",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
