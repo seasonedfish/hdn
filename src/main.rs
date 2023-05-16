@@ -92,8 +92,8 @@ fn add(packages: &Vec<String>, show_trace: &bool) {
     }
 
     let mut command = Command::new("home-manager");
-    let command = command.arg("switch")
-        .arg(if *show_trace { "--show-trace" } else { "" });
+    let command = command.arg("switch");
+    let command = if *show_trace {command.arg("--show-trace")} else {command};
 
     let mut child = command.spawn()
         .expect("Should able to run home-manager switch");
