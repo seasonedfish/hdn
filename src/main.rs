@@ -67,7 +67,7 @@ fn add(packages: &Vec<String>, show_trace: &bool) {
         }
     }
 
-    if packages_to_add.len() == 0 {
+    if packages_to_add.is_empty() {
         println!("Nothing to add to home.nix");
         return;
     }
@@ -108,7 +108,7 @@ fn add(packages: &Vec<String>, show_trace: &bool) {
             Ok(..) => {}
             Err(error) => {
                 print_error(format!("could not write to home.nix: {error}"));
-                return;
+                #[allow(clippy::needless_return)] return;
             }
         };
     }
