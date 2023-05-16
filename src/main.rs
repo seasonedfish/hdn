@@ -38,7 +38,6 @@ fn add(packages: &Vec<String>, show_trace: &bool) {
     let file = dirs::home_dir()
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
-    println!("Using {} as home.nix", file.display());
 
     let fs_read_result = fs::read_to_string(file.clone());
     let content = match fs_read_result {
