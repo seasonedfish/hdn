@@ -72,7 +72,6 @@ fn run_home_manager_switch(show_trace: &bool) -> Result<(), RunHomeManagerSwitch
     let mut child = command
         .spawn()
         .map_err(CouldNotRun)?;
-    println!("Running home-manager switch: PID {}", child.id());
 
     let exit_status = child.wait().map_err(OSError)?;
 
