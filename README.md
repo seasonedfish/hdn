@@ -32,12 +32,3 @@ This program uses Rust, and I don't actually know how to program in Rust.
 (I chose Rust because I found a Rust library for easily reading and writing nix files.)
 
 Someday I'll go back, actually learn Rust, and rewrite this, but for now, use at your own risk.
-
-## Todos
-- Support `~/.config/nixpkgs/` location for home.nix
-- Support "remove" subcommand
-- Add "--help" option
-- Organize code into functions
-- Use rnix directly instead of `nix-editor`
-- Show `home.nix` diff
-- Actually learn Rust
