@@ -1,8 +1,12 @@
-use std::{fs};
-use std::collections::HashSet;
-use std::process::{Command};
+pub mod diff;
+
+use std::{fs, io};
+use std::error::Error;
+use std::process::{Command, ExitCode};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
+use indexmap::IndexSet;
+use thiserror::Error;
 
 const QUERY: &str = "home.packages";
 
@@ -17,7 +21,13 @@ enum HdnSubcommand {
         show_trace: bool
     },
     /// Remove packages from home.nix, then run home-manager switch
-    Remove {packages: Vec<String>}
+    Remove {
+        /// The packages to remove, space separated
+        packages: Vec<String>,
+        /// Passes --show-trace to home-manager switch
+        #[clap(long, short, action)]
+        show_trace: bool
+    }
 }
 
 #[derive(Parser)]
@@ -29,101 +39,178 @@ struct HdnCli {
     subcommand: HdnSubcommand,
 }
 
-fn print_error(message: String) {
+fn print_error<T: Error>(error: T) {
     let error_prefix = "error:".red().bold().to_string();
-    eprintln!("{error_prefix} {message}");
+    eprintln!("{error_prefix} {}", error);
+
+    fn print_sources<T: Error>(error: T) {
+        if let Some(source) = error.source() {
+            eprintln!("caused by: {}", source);
+            print_sources(source);
+        }
+    }
+    print_sources(error);
 }
 
-fn add(packages: &Vec<String>, show_trace: &bool) {
-    let file = dirs::home_dir()
-        .expect("Home directory should exist")
-        .join(".config/home-manager/home.nix");
-    println!("Using {} as home.nix", file.display());
+#[derive(Error, Debug)]
+enum RunHomeManagerSwitchError {
+    #[error("Could not run home-manager switch")]
+    CouldNotRun(#[source] io::Error),
+    #[error("OS error occurred while running home-manager switch")]
+    OSError(#[source] io::Error),
+    #[error("home-manager switch returned a non-zero exit code")]
+    Unsuccessful
+}
 
-    let fs_read_result = fs::read_to_string(file.clone());
-    let content = match fs_read_result {
-        Ok(content) => content,
-        Err(error) => {
-            print_error(format!("could not open home.nix: {error}"));
-            return;
-        }
-    };
-
-    let nix_read_result = nix_editor::read::getarrvals(&content, QUERY);
-    let existing_packages: HashSet<String> = match nix_read_result {
-        Ok(vec) => HashSet::from_iter(vec),
-        Err(_error) => {
-            print_error(format!("could not get values of {QUERY} attribute in home.nix"));
-            return;
-        }
-    };
-
-    let mut packages_to_add = Vec::new();
-    for package in packages {
-        if existing_packages.contains(package) {
-            println!("Skipping \"{package}\": already in home.nix");
-        } else {
-            packages_to_add.push(package);
-        }
-    }
-
-    if packages_to_add.len() == 0 {
-        println!("Nothing to add to home.nix");
-        return;
-    }
-
-    println!("{}", format!("Adding {:?} to home.nix", packages_to_add).blue().bold());
-
-    let nix_add_result = nix_editor::write::addtoarr(&content, QUERY, packages_to_add.into_iter().cloned().collect());
-    let new_content = match nix_add_result {
-        Ok(new_content) => new_content,
-        Err(_error) => {
-            print_error(format!("could not update {QUERY} attribute for new packages"));
-            return;
-        }
-    };
-
-    match fs::write(file.clone(), new_content) {
-        Ok(..) => {}
-        Err(error) => {
-            print_error(format!("could not write to home.nix: {error}"));
-            return;
-        }
-    }
+fn run_home_manager_switch(show_trace: &bool) -> Result<(), RunHomeManagerSwitchError> {
+    use crate::RunHomeManagerSwitchError::*;
 
     let mut command = Command::new("home-manager");
     let command = command.arg("switch");
     let command = if *show_trace {command.arg("--show-trace")} else {command};
 
-    let mut child = command.spawn()
-        .expect("Should able to run home-manager switch");
-    println!("Running home-manager switch: PID {}", child.id());
+    let mut child = command
+        .spawn()
+        .map_err(CouldNotRun)?;
 
-    if child.wait().unwrap().success() {
-        println!("{}", "Successfully updated home.nix and activated generation".green().bold());
-    } else {
-        println!("Running home-manager switch resulted in an error, reverting home.nix");
+    let exit_status = child.wait().map_err(OSError)?;
 
-        match fs::write(file, content) {
-            Ok(..) => {}
-            Err(error) => {
-                print_error(format!("could not write to home.nix: {error}"));
-                return;
-            }
-        };
+    if !exit_status.success() {
+        return Err(Unsuccessful);
+    }
+    Ok(())
+}
+
+enum UpdateNixMode {
+    Add,
+    Remove
+}
+
+#[derive(Error, Debug)]
+enum UpdateNixError {
+    #[error("could not read values of home.packages attribute in home.nix")]
+    CouldNotReadNix(#[source] nix_editor::read::ReadError),
+    #[error("could not write home.packages attribute for new packages")]
+    CouldNotWriteNix(#[source] nix_editor::write::WriteError),
+}
+
+fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Result<String, UpdateNixError> {
+    use crate::UpdateNixError::*;
+    use crate::UpdateNixMode::*;
+
+    let packages: IndexSet<&String> = IndexSet::from_iter(packages);
+
+    let existing_packages: IndexSet<String> = IndexSet::from_iter(
+        nix_editor::read::getarrvals(content, QUERY)
+            .map_err(CouldNotReadNix)?
+    );
+
+    match mode {
+        Add => {
+            let transformed_packages: Vec<&String> = packages.into_iter()
+                .filter(|&p| !existing_packages.contains(p))
+                .collect();
+
+            nix_editor::write::addtoarr(
+                content,
+                QUERY,
+                transformed_packages.into_iter().cloned().collect()
+            ).map_err(CouldNotWriteNix)
+        }
+        Remove => {
+            let transformed_packages: Vec<&String> = packages.into_iter()
+                .filter(|&p| existing_packages.contains(p))
+                .collect();
+
+            nix_editor::write::rmarr(
+                content,
+                QUERY,
+                transformed_packages.into_iter().cloned().collect()
+            ).map_err(CouldNotWriteNix)
+        }
     }
 }
 
-fn main() {
+#[derive(Error, Debug)]
+enum HdnError {
+    #[error("could not read home.nix")]
+    CouldNotReadFile(#[source] io::Error),
+    #[error("could not write to home.nix")]
+    CouldNotWriteToFile(#[source] io::Error),
+    #[error("running home-manager switch errored, and during the rollback of home.nix, another error occurred")]
+    UnsuccessfulAndNotRolledBack(#[source] io::Error),
+    #[error("running home-manager switch errored; your home.nix has been rolled back")]
+    UnsuccessfulButRolledBack(#[source] RunHomeManagerSwitchError),
+    #[error("could not update home.packages attribute in home.nix")]
+    CouldNotUpdatePackages(#[source] UpdateNixError),
+    #[error("home.nix already contains all the specified packages, home-manager switch was not run")]
+    NothingToAdd,
+    #[error("home.nix doesn't contain any of the specified packages, home-manager switch was not run")]
+    NothingToRemove
+}
+
+fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+    use crate::HdnError::*;
+
+    let file = dirs::home_dir()
+        .expect("Home directory should exist")
+        .join(".config/home-manager/home.nix");
+
+    let content = fs::read_to_string(&file).map_err(CouldNotReadFile)?;
+
+    let new_content = update_nix(&content, packages, &mode)
+        .map_err(CouldNotUpdatePackages)?;
+
+    if new_content.eq(&content) {
+        return match mode {
+            UpdateNixMode::Add => Err(NothingToAdd),
+            UpdateNixMode::Remove => Err(NothingToRemove)
+        };
+    }
+
+    diff::print_diff(&content, &new_content);
+    println!();
+
+    fs::write(&file, new_content).map_err(CouldNotWriteToFile)?;
+
+    if let Err(error) = run_home_manager_switch(show_trace) {
+        fs::write(&file, content)
+            .map_err(UnsuccessfulAndNotRolledBack)?;
+
+        return Err(UnsuccessfulButRolledBack(error));
+    }
+    Ok(())
+}
+
+fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+    update(UpdateNixMode::Add, packages, show_trace)
+}
+
+fn remove(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+    update(UpdateNixMode::Remove, packages, show_trace)
+}
+
+fn main() -> ExitCode {
     let cli = HdnCli::parse();
 
-    match &cli.subcommand {
+    let result = match &cli.subcommand {
         HdnSubcommand::Add {packages, show_trace} => {
-            add(packages, show_trace);
+            add(packages, show_trace)
         }
 
-        HdnSubcommand::Remove { packages: _packages } => {
-            print_error(String::from("the remove command isn't implemented yet"));
+        HdnSubcommand::Remove { packages, show_trace} => {
+            remove(packages, show_trace)
+        }
+    };
+
+    match result {
+        Err(error) => {
+            print_error(error);
+            ExitCode::FAILURE
+        }
+        Ok(()) => {
+            println!("{}", "Successfully updated home.nix and activated generation".bold());
+            ExitCode::SUCCESS
         }
     }
 }

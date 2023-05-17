@@ -8,5 +8,8 @@ edition = "2021"
 [dependencies]
 clap = "4.2.7"
 dirs = "5.0.0"
+indexmap = "1.9.3"
 nix-editor = "0.3.0"
 owo-colors = "3.5.0"
+similar = { version = "2.2.1", features = ["inline"] }
+thiserror = "1.0.40"
