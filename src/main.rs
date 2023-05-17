@@ -88,15 +88,15 @@ enum UpdateNixMode {
 }
 
 #[derive(Error, Debug)]
-enum UpdatePackagesError {
+enum UpdateNixError {
     #[error("could not read values of home.packages attribute in home.nix")]
     CouldNotReadNix(#[source] nix_editor::read::ReadError),
     #[error("could not write home.packages attribute for new packages")]
     CouldNotWriteNix(#[source] nix_editor::write::WriteError),
 }
 
-fn update_nix(content: &str, packages: &Vec<String>, mode: UpdateNixMode) -> Result<String, UpdatePackagesError> {
-    use crate::UpdatePackagesError::{CouldNotReadNix, CouldNotWriteNix};
+fn update_nix(content: &str, packages: &Vec<String>, mode: UpdateNixMode) -> Result<String, UpdateNixError> {
+    use crate::UpdateNixError::{CouldNotReadNix, CouldNotWriteNix};
     use crate::UpdateNixMode::{Add, Remove};
 
     let packages: IndexSet<&String> = IndexSet::from_iter(packages);
@@ -143,7 +143,7 @@ enum HdnError {
     #[error("running home-manager switch errored; your home.nix has been rolled back")]
     UnsuccessfulButRolledBack(#[source] RunHomeManagerSwitchError),
     #[error("could not update home.packages attribute in home.nix")]
-    CouldNotUpdatePackages(#[source] UpdatePackagesError),
+    CouldNotUpdatePackages(#[source] UpdateNixError),
     #[error("nothing to update in home.nix, home-manager switch was not run")]
     NothingToUpdate
 }
