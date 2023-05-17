@@ -63,7 +63,7 @@ enum RunHomeManagerSwitchError {
 }
 
 fn run_home_manager_switch(show_trace: &bool) -> Result<(), RunHomeManagerSwitchError> {
-    use crate::RunHomeManagerSwitchError::{CouldNotRun, OSError, Unsuccessful};
+    use crate::RunHomeManagerSwitchError::*;
 
     let mut command = Command::new("home-manager");
     let command = command.arg("switch");
@@ -96,8 +96,8 @@ enum UpdateNixError {
 }
 
 fn update_nix(content: &str, packages: &Vec<String>, mode: UpdateNixMode) -> Result<String, UpdateNixError> {
-    use crate::UpdateNixError::{CouldNotReadNix, CouldNotWriteNix};
-    use crate::UpdateNixMode::{Add, Remove};
+    use crate::UpdateNixError::*;
+    use crate::UpdateNixMode::*;
 
     let packages: IndexSet<&String> = IndexSet::from_iter(packages);
 
@@ -149,7 +149,7 @@ enum HdnError {
 }
 
 fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
-    use crate::HdnError::{CouldNotReadFile, CouldNotWriteToFile, UnsuccessfulAndNotRolledBack, UnsuccessfulButRolledBack, CouldNotUpdatePackages, NothingToUpdate};
+    use crate::HdnError::*;
 
     let file = dirs::home_dir()
         .expect("Home directory should exist")
