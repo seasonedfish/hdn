@@ -2,7 +2,7 @@ pub mod diff;
 
 use std::{fs, io};
 use std::error::Error;
-use std::process::{Command};
+use std::process::{Command, ExitCode};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
 use indexmap::IndexSet;
@@ -186,7 +186,7 @@ fn remove(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
     update(UpdateNixMode::Remove, packages, show_trace)
 }
 
-fn main() {
+fn main() -> ExitCode {
     let cli = HdnCli::parse();
 
     let result = match &cli.subcommand {
@@ -198,12 +198,15 @@ fn main() {
             remove(packages, show_trace)
         }
     };
+
     match result {
         Err(error) => {
             print_error(error);
+            ExitCode::FAILURE
         }
         Ok(()) => {
             println!("{}", "Successfully updated home.nix and activated generation".bold());
+            ExitCode::SUCCESS
         }
-    };
+    }
 }

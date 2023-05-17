@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 clap = "4.2.7"
 dirs = "5.0.0"
-exitcode = "1.1.2"
 indexmap = "1.9.3"
 nix-editor = "0.3.0"
 owo-colors = "3.5.0"
