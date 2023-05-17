@@ -95,7 +95,7 @@ enum UpdateNixError {
     CouldNotWriteNix(#[source] nix_editor::write::WriteError),
 }
 
-fn update_nix(content: &str, packages: &Vec<String>, mode: UpdateNixMode) -> Result<String, UpdateNixError> {
+fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Result<String, UpdateNixError> {
     use crate::UpdateNixError::*;
     use crate::UpdateNixMode::*;
 
@@ -144,8 +144,10 @@ enum HdnError {
     UnsuccessfulButRolledBack(#[source] RunHomeManagerSwitchError),
     #[error("could not update home.packages attribute in home.nix")]
     CouldNotUpdatePackages(#[source] UpdateNixError),
-    #[error("nothing to update in home.nix, home-manager switch was not run")]
-    NothingToUpdate
+    #[error("home.nix already contains all the specified packages, home-manager switch was not run")]
+    NothingToAdd,
+    #[error("home.nix doesn't contain any of the specified packages, home-manager switch was not run")]
+    NothingToRemove
 }
 
 fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
@@ -157,11 +159,14 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
 
     let content = fs::read_to_string(file.clone()).map_err(CouldNotReadFile)?;
 
-    let new_content = update_nix(&content, packages, mode)
+    let new_content = update_nix(&content, packages, &mode)
         .map_err(CouldNotUpdatePackages)?;
 
     if new_content.eq(&content) {
-        return Err(NothingToUpdate);
+        return match mode {
+            UpdateNixMode::Add => Err(NothingToAdd),
+            UpdateNixMode::Remove => Err(NothingToRemove)
+        };
     }
 
     diff::print_diff(&content, &new_content);
