@@ -44,15 +44,12 @@ fn print_error<T: Error>(error: T) {
     eprintln!("{error_prefix} {}", error);
 
     fn print_sources<T: Error>(error: T) {
-        eprintln!("caused by: {}", error);
-
         if let Some(source) = error.source() {
+            eprintln!("caused by: {}", source);
             print_sources(source);
         }
     }
-    if let Some(source) = error.source() {
-        print_sources(source);
-    }
+    print_sources(error);
 }
 
 #[derive(Error, Debug)]
