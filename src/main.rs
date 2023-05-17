@@ -156,7 +156,7 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
         .expect("Home directory should exist")
         .join(".config/home-manager/home.nix");
 
-    let content = fs::read_to_string(file.clone()).map_err(CouldNotReadFile)?;
+    let content = fs::read_to_string(&file).map_err(CouldNotReadFile)?;
 
     let new_content = update_nix(&content, packages, &mode)
         .map_err(CouldNotUpdatePackages)?;
@@ -171,10 +171,10 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
     diff::print_diff(&content, &new_content);
     println!();
 
-    fs::write(file.clone(), new_content).map_err(CouldNotWriteToFile)?;
+    fs::write(&file, new_content).map_err(CouldNotWriteToFile)?;
 
     if let Err(error) = run_home_manager_switch(show_trace) {
-        fs::write(file, content)
+        fs::write(&file, content)
             .map_err(UnsuccessfulAndNotRolledBack)?;
 
         return Err(UnsuccessfulButRolledBack(error));
