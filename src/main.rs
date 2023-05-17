@@ -98,25 +98,25 @@ enum UpdatePackagesError {
     CouldNotWriteNix(#[source] nix_editor::write::WriteError),
 }
 
-fn update_nix(content: &String, packages: &Vec<String>, mode: UpdateNixMode) -> Result<String, UpdatePackagesError> {
+fn update_nix(content: &str, packages: &Vec<String>, mode: UpdateNixMode) -> Result<String, UpdatePackagesError> {
     use crate::UpdatePackagesError::{CouldNotReadNix, CouldNotWriteNix};
     use crate::UpdateNixMode::{Add, Remove};
 
     let packages: IndexSet<&String> = IndexSet::from_iter(packages);
 
     let existing_packages: IndexSet<String> = IndexSet::from_iter(
-        nix_editor::read::getarrvals(&content, QUERY)
+        nix_editor::read::getarrvals(content, QUERY)
             .map_err(CouldNotReadNix)?
     );
 
-    return match mode {
+    match mode {
         Add => {
             let transformed_packages: Vec<&String> = packages.into_iter()
                 .filter(|&p| !existing_packages.contains(p))
                 .collect();
 
             nix_editor::write::addtoarr(
-                &content,
+                content,
                 QUERY,
                 transformed_packages.into_iter().cloned().collect()
             ).map_err(CouldNotWriteNix)
@@ -127,7 +127,7 @@ fn update_nix(content: &String, packages: &Vec<String>, mode: UpdateNixMode) -> 
                 .collect();
 
             nix_editor::write::rmarr(
-                &content,
+                content,
                 QUERY,
                 transformed_packages.into_iter().cloned().collect()
             ).map_err(CouldNotWriteNix)
