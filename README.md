@@ -32,3 +32,9 @@ This program uses Rust, and I don't actually know how to program in Rust.
 (I chose Rust because I found a Rust library for easily reading and writing nix files.)
 
 Someday I'll go back, actually learn Rust, and rewrite this, but for now, use at your own risk.
+
+## Installation
+An initial version is available for installation at crates.io.
+```shell
+cargo install hdn
+```
