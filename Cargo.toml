@@ -1,9 +1,14 @@
 [package]
 name = "hdn"
+description = "Utility for updating home.nix"
 version = "0.1.0"
 edition = "2021"
 license = "BSD-2-Clause"
 license-file = "LICENSE"
+readme = "README.md"
+keywords = ["nix"]
+categories = ["command-line-utilities"]
+repository = "https://github.com/seasonedfish/hdn"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
