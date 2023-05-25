@@ -21,7 +21,7 @@ If `home-manager switch` fails, it will automatically roll back `home.nix` to it
 ## Requirements
 This program requires that:
 - you have `home-manger` on your PATH
-- `home.nix` lives in `~/.config/home-manager/`
+- `home.nix` lives in one of the default locations (namely, `~/.config/home-manager/`, `~/.config/nixpkgs/`, `~/.nixpkgs/`)
 - `home.nix` contains the attribute `home.packages`, the list of packages in the user environment
 
 These requirements should be satisfied with the default home-manager installation.
