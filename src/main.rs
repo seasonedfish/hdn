@@ -122,6 +122,8 @@ fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Re
 enum HdnSuccess {
     HomeManagerSwitchSucceeded,
     HomeManagerSwitchErroredButRollbackSuccessful,
+    NothingToAdd,
+    NothingToRemove
 }
 
 impl Display for HdnSuccess {
@@ -133,6 +135,12 @@ impl Display for HdnSuccess {
             },
             HomeManagerSwitchErroredButRollbackSuccessful => {
                 write!(f, "Running home-manager switch errored; your home.nix has been rolled back")
+            }
+            NothingToAdd => {
+                write!(f, "home.nix already contains all the specified packages; home-manager switch was not run")
+            }
+            NothingToRemove => {
+                write!(f, "home.nix doesn't contain any of the specified packages, home-manager switch was not run")
             }
         }
     }
@@ -149,10 +157,6 @@ enum HdnError {
     UnsuccessfulAndNotRolledBack(#[source] io::Error),
     #[error("could not update home.packages attribute in home.nix")]
     CouldNotUpdatePackages(#[source] UpdateNixError),
-    #[error("home.nix already contains all the specified packages, home-manager switch was not run")]
-    NothingToAdd,
-    #[error("home.nix doesn't contain any of the specified packages, home-manager switch was not run")]
-    NothingToRemove
 }
 
 fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Result<HdnSuccess, HdnError> {
@@ -170,8 +174,8 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
 
     if new_content.eq(&content) {
         return match mode {
-            UpdateNixMode::Add => Err(NothingToAdd),
-            UpdateNixMode::Remove => Err(NothingToRemove)
+            UpdateNixMode::Add => Ok(NothingToAdd),
+            UpdateNixMode::Remove => Ok(NothingToRemove)
         };
     }
 
