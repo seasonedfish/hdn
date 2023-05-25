@@ -181,13 +181,20 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
     fs::write(&file, new_content).map_err(CouldNotWriteToFile)?;
 
     let run_result = run_home_manager_switch(show_trace);
-    println!();
-    if let Err(_error) = run_result {
+    if let Err(error) = run_result {
+        // Skip printing the error if home-manager returned a non-zero exit code,
+        // since home-manager prints its own errors.
+        if !matches!(error, RunHomeManagerSwitchError::Unsuccessful) {
+            print_error(error);
+        }
+        println!();
+
         fs::write(&file, content)
             .map_err(UnsuccessfulAndNotRolledBack)?;
 
         return Ok(HomeManagerSwitchErroredButRollbackSuccessful);
     }
+    println!();
     Ok(HomeManagerSwitchSucceeded)
 }
 
