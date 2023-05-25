@@ -9,14 +9,13 @@ I wanted a workflow like Poetry,
 where I could just add a package and install it in one command.
 So, I made `hdn`.
 
-You can call it like so:
-```shell
-hdn add pkgs.hello
-```
+You can call it with e.g. `hdn add pkgs.hello pkgs.cowsay`:
 
-This will add `pkgs.hello` to your `home.packages` in `home.nix`, and call `home-manager switch`.
+<img width="794" alt="image" src="https://github.com/seasonedfish/hdn/assets/29507110/0a6fa19b-34c0-4246-9d4e-41b114927d13">
 
-If `home-manager switch` fails, it will automatically roll back `home.nix` to its previous version. 
+This adds `pkgs.hello` and `pkgs.cowsay` to the `home.packages` attribute in `home.nix`, and calls `home-manager switch`.
+
+If `home-manager switch` fails, it will automatically roll back `home.nix` to its original state. 
 
 ## Requirements
 This program requires that:
@@ -34,7 +33,7 @@ This program uses Rust, and I don't actually know how to program in Rust.
 Someday I'll go back, actually learn Rust, and rewrite this, but for now, use at your own risk.
 
 ## Installation
-An initial version is available for installation at crates.io.
+Releases are available on crates.io.
 ```shell
 cargo install hdn
 ```
