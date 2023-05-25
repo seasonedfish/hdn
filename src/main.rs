@@ -3,9 +3,11 @@ mod nix_parse;
 mod nix_read;
 mod nix_write;
 
-use std::{fmt, fs, io};
+use std::{fmt, fs, io, env};
+use std::env::VarError;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::path::{PathBuf};
 use std::process::{Command, ExitCode};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
@@ -122,6 +124,43 @@ fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Re
     }
 }
 
+#[derive(Error, Debug)]
+enum GetHomeDotNixError {
+    #[error("could not get $HOME environment variable")]
+    NoHomeEnvironmentVariable(#[source] VarError),
+    #[error("home.nix was not found in any of the default locations")]
+    NotFound
+}
+
+fn get_home_dot_nix() -> Result<PathBuf, GetHomeDotNixError> {
+    use crate::GetHomeDotNixError::*;
+
+    let config_home = env::var("XDG_CONFIG_HOME");
+    let config_home: PathBuf = match config_home {
+        Ok(s) => PathBuf::from(s),
+        Err(_error) =>
+            [env::var("HOME").map_err(NoHomeEnvironmentVariable)?, ".config".to_string()]
+                .iter()
+                .collect()
+    };
+
+    let paths_to_check = [
+        config_home.join("home-manager/home.nix"),
+        config_home.join("nixpkgs/home.nix"),
+        [env::var("HOME").map_err(NoHomeEnvironmentVariable)?, ".nixpkgs/home.nix".to_string()]
+            .iter()
+            .collect(),
+    ];
+
+    for path in paths_to_check {
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
+    Err(NotFound)
+}
+
 enum HdnSuccess {
     HomeManagerSwitchSucceeded,
     HomeManagerSwitchErroredButRollbackSuccessful,
@@ -149,9 +188,10 @@ impl Display for HdnSuccess {
     }
 }
 
-
 #[derive(Error, Debug)]
 enum HdnError {
+    #[error("could not find home.nix")]
+    CouldNotFindHomeDotNix(#[source] GetHomeDotNixError),
     #[error("could not read home.nix")]
     CouldNotReadFile(#[source] io::Error),
     #[error("could not write to home.nix")]
@@ -166,9 +206,7 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
     use crate::HdnError::*;
     use crate::HdnSuccess::*;
 
-    let file = dirs::home_dir()
-        .expect("Home directory should exist")
-        .join(".config/home-manager/home.nix");
+    let file = get_home_dot_nix().map_err(CouldNotFindHomeDotNix)?;
 
     let content = fs::read_to_string(&file).map_err(CouldNotReadFile)?;
 
