@@ -173,7 +173,9 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
 
     fs::write(&file, new_content).map_err(CouldNotWriteToFile)?;
 
-    if let Err(error) = run_home_manager_switch(show_trace) {
+    let run_result = run_home_manager_switch(show_trace);
+    println!();
+    if let Err(error) = run_result {
         fs::write(&file, content)
             .map_err(UnsuccessfulAndNotRolledBack)?;
 
@@ -209,7 +211,7 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
         Ok(()) => {
-            println!("{}", "Successfully updated home.nix and activated generation".bold());
+            println!("{}", "Successfully updated home.nix and activated generation");
             ExitCode::SUCCESS
         }
     }
