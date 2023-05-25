@@ -1,4 +1,7 @@
 pub mod diff;
+mod nix_parse;
+mod nix_read;
+mod nix_write;
 
 use std::{fmt, fs, io};
 use std::error::Error;
@@ -77,9 +80,9 @@ enum UpdateNixMode {
 #[derive(Error, Debug)]
 enum UpdateNixError {
     #[error("could not read values of home.packages attribute in home.nix")]
-    CouldNotReadNix(#[source] nix_editor::read::ReadError),
+    CouldNotReadNix(#[source] nix_read::ReadError),
     #[error("could not write home.packages attribute for new packages")]
-    CouldNotWriteNix(#[source] nix_editor::write::WriteError),
+    CouldNotWriteNix(#[source] nix_write::WriteError),
 }
 
 fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Result<String, UpdateNixError> {
@@ -89,7 +92,7 @@ fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Re
     let packages: IndexSet<&String> = IndexSet::from_iter(packages);
 
     let existing_packages: IndexSet<String> = IndexSet::from_iter(
-        nix_editor::read::getarrvals(content, QUERY)
+        nix_read::getarrvals(content, QUERY)
             .map_err(CouldNotReadNix)?
     );
 
@@ -99,7 +102,7 @@ fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Re
                 .filter(|&p| !existing_packages.contains(p))
                 .collect();
 
-            nix_editor::write::addtoarr(
+            nix_write::addtoarr(
                 content,
                 QUERY,
                 transformed_packages.into_iter().cloned().collect()
@@ -110,7 +113,7 @@ fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Re
                 .filter(|&p| existing_packages.contains(p))
                 .collect();
 
-            nix_editor::write::rmarr(
+            nix_write::rmarr(
                 content,
                 QUERY,
                 transformed_packages.into_iter().cloned().collect()
