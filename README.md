@@ -38,6 +38,9 @@ Releases are available on crates.io.
 cargo install hdn
 ```
 
+If you don't want to use `cargo` to build from source,
+you can download a pre-built binary from the [Releases page](https://github.com/seasonedfish/hdn/releases) (untested!).
+
 ## Acknowledgements
 This project was made possible by the work of others (that I ~~stole~~ legally incorporated).
 
