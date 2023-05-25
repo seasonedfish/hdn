@@ -39,19 +39,6 @@ struct HdnCli {
     subcommand: HdnSubcommand,
 }
 
-fn print_error<T: Error>(error: T) {
-    let error_prefix = "error:".red().bold().to_string();
-    eprintln!("{error_prefix} {}", error);
-
-    fn print_sources<T: Error>(error: T) {
-        if let Some(source) = error.source() {
-            eprintln!("caused by: {}", source);
-            print_sources(source);
-        }
-    }
-    print_sources(error);
-}
-
 #[derive(Error, Debug)]
 enum RunHomeManagerSwitchError {
     #[error("Could not run home-manager switch")]
@@ -190,6 +177,19 @@ fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
 
 fn remove(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
     update(UpdateNixMode::Remove, packages, show_trace)
+}
+
+fn print_error<T: Error>(error: T) {
+    let error_prefix = "error:".red().bold().to_string();
+    eprintln!("{error_prefix} {}", error);
+
+    fn print_sources<T: Error>(error: T) {
+        if let Some(source) = error.source() {
+            eprintln!("caused by: {}", source);
+            print_sources(source);
+        }
+    }
+    print_sources(error);
 }
 
 fn main() -> ExitCode {
