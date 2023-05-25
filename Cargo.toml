@@ -13,7 +13,6 @@ repository = "https://github.com/seasonedfish/hdn"
 
 [dependencies]
 clap = { version = "4.2.7", features = ["derive"] }
-dirs = "5.0.0"
 indexmap = "1.9.3"
 owo-colors = "3.5.0"
 rnix = "0.11.0"
