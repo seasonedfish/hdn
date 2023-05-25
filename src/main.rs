@@ -1,4 +1,4 @@
-pub mod diff;
+mod diff;
 mod nix_parse;
 mod nix_read;
 mod nix_write;

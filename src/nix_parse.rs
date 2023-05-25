@@ -27,7 +27,7 @@ use std::{fmt::Write};
 
 use rnix::{self, SyntaxKind, SyntaxNode};
 
-pub fn findattr(configbase: &SyntaxNode, name: &str) -> Option<SyntaxNode> {
+pub(crate) fn findattr(configbase: &SyntaxNode, name: &str) -> Option<SyntaxNode> {
     let mut childvec: Vec<(String, String)> = Vec::new();
     for child in configbase.children() {
         if child.kind() == SyntaxKind::NODE_ATTRPATH_VALUE {
@@ -113,7 +113,7 @@ pub fn findattr(configbase: &SyntaxNode, name: &str) -> Option<SyntaxNode> {
     }
 }
 
-pub fn getkey(node: &SyntaxNode) -> Vec<String> {
+pub(crate) fn getkey(node: &SyntaxNode) -> Vec<String> {
     let mut key = vec![];
     for child in node.children() {
         if child.kind() == SyntaxKind::NODE_IDENT || child.kind() == SyntaxKind::NODE_STRING {
@@ -123,7 +123,7 @@ pub fn getkey(node: &SyntaxNode) -> Vec<String> {
     key
 }
 
-pub fn getcfgbase(node: &SyntaxNode) -> Option<SyntaxNode> {
+pub(crate) fn getcfgbase(node: &SyntaxNode) -> Option<SyntaxNode> {
     // First check if we're in a set
     if node.kind() == SyntaxKind::NODE_ATTR_SET {
         return Some(node.clone());

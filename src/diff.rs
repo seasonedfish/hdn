@@ -195,7 +195,7 @@ impl fmt::Display for Line {
     }
 }
 
-pub fn print_diff(string1: &String, string2: &String) {
+pub(crate) fn print_diff(string1: &String, string2: &String) {
     let diff = TextDiff::from_lines(string1, string2);
 
     for (idx, group) in diff.grouped_ops(3).iter().enumerate() {

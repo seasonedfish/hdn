@@ -28,7 +28,7 @@ use rnix::{self, SyntaxKind, SyntaxNode};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum WriteError {
+pub(crate) enum WriteError {
     #[error("Error while parsing.")]
     ParseError,
     #[error("No attributes.")]
@@ -104,7 +104,7 @@ fn matchval(configbase: &SyntaxNode, query: &str, acc: usize) -> Option<SyntaxNo
     }
 }
 
-pub fn addtoarr(f: &str, query: &str, items: Vec<String>) -> Result<String, WriteError> {
+pub(crate) fn addtoarr(f: &str, query: &str, items: Vec<String>) -> Result<String, WriteError> {
     let ast = rnix::Root::parse(f);
     let configbase = match getcfgbase(&ast.syntax()) {
         Some(x) => x,
@@ -178,7 +178,7 @@ fn addtoarr_aux(node: &SyntaxNode, items: Vec<String>) -> Option<SyntaxNode> {
     None
 }
 
-pub fn rmarr(f: &str, query: &str, items: Vec<String>) -> Result<String, WriteError> {
+pub(crate) fn rmarr(f: &str, query: &str, items: Vec<String>) -> Result<String, WriteError> {
     let ast = rnix::Root::parse(f);
     let configbase = match getcfgbase(&ast.syntax()) {
         Some(x) => x,

@@ -28,7 +28,7 @@ use rnix::{SyntaxKind, SyntaxNode};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum ReadError {
+pub(crate) enum ReadError {
     #[error("Error while parsing")]
     ParseError,
     #[error("No attributes")]
@@ -37,7 +37,7 @@ pub enum ReadError {
     ArrayError,
 }
 
-pub fn getarrvals(f: &str, query: &str) -> Result<Vec<String>, ReadError> {
+pub(crate) fn getarrvals(f: &str, query: &str) -> Result<Vec<String>, ReadError> {
     let ast = rnix::Root::parse(f);
     let configbase = match getcfgbase(&ast.syntax()) {
         Some(x) => x,
