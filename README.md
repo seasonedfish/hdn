@@ -37,3 +37,12 @@ Releases are available on crates.io.
 ```shell
 cargo install hdn
 ```
+
+## Acknowledgements
+This project was made possible by the work of others (that I ~~stole~~ legally incorporated).
+
+I thank Victor Fuentes for his work on [nix-editor](https://github.com/vlinkz/nix-editor);
+the code for nix parsing and writing comes from his project.
+
+I thank Armin Ronacher for his work on [similar](https://github.com/mitsuhiko/similar);
+the code that displays the `home.nix` diff comes from his project.
