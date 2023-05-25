@@ -1,7 +1,8 @@
 pub mod diff;
 
-use std::{fs, io};
+use std::{fmt, fs, io};
 use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::process::{Command, ExitCode};
 use owo_colors::{OwoColorize};
 use clap::{Parser, Subcommand};
@@ -118,6 +119,26 @@ fn update_nix(content: &str, packages: &Vec<String>, mode: &UpdateNixMode) -> Re
     }
 }
 
+enum HdnSuccess {
+    HomeManagerSwitchSucceeded,
+    HomeManagerSwitchErroredButRollbackSuccessful,
+}
+
+impl Display for HdnSuccess {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        use crate::HdnSuccess::*;
+        match self {
+            HomeManagerSwitchSucceeded => {
+                write!(f, "Successfully updated home.nix and activated generation")
+            },
+            HomeManagerSwitchErroredButRollbackSuccessful => {
+                write!(f, "Running home-manager switch errored; your home.nix has been rolled back")
+            }
+        }
+    }
+}
+
+
 #[derive(Error, Debug)]
 enum HdnError {
     #[error("could not read home.nix")]
@@ -126,8 +147,6 @@ enum HdnError {
     CouldNotWriteToFile(#[source] io::Error),
     #[error("running home-manager switch errored, and during the rollback of home.nix, another error occurred")]
     UnsuccessfulAndNotRolledBack(#[source] io::Error),
-    #[error("running home-manager switch errored; your home.nix has been rolled back")]
-    UnsuccessfulButRolledBack(#[source] RunHomeManagerSwitchError),
     #[error("could not update home.packages attribute in home.nix")]
     CouldNotUpdatePackages(#[source] UpdateNixError),
     #[error("home.nix already contains all the specified packages, home-manager switch was not run")]
@@ -136,8 +155,9 @@ enum HdnError {
     NothingToRemove
 }
 
-fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Result<HdnSuccess, HdnError> {
     use crate::HdnError::*;
+    use crate::HdnSuccess::*;
 
     let file = dirs::home_dir()
         .expect("Home directory should exist")
@@ -162,20 +182,20 @@ fn update(mode: UpdateNixMode, packages: &Vec<String>, show_trace: &bool) -> Res
 
     let run_result = run_home_manager_switch(show_trace);
     println!();
-    if let Err(error) = run_result {
+    if let Err(_error) = run_result {
         fs::write(&file, content)
             .map_err(UnsuccessfulAndNotRolledBack)?;
 
-        return Err(UnsuccessfulButRolledBack(error));
+        return Ok(HomeManagerSwitchErroredButRollbackSuccessful);
     }
-    Ok(())
+    Ok(HomeManagerSwitchSucceeded)
 }
 
-fn add(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+fn add(packages: &Vec<String>, show_trace: &bool) -> Result<HdnSuccess, HdnError> {
     update(UpdateNixMode::Add, packages, show_trace)
 }
 
-fn remove(packages: &Vec<String>, show_trace: &bool) -> Result<(), HdnError> {
+fn remove(packages: &Vec<String>, show_trace: &bool) -> Result<HdnSuccess, HdnError> {
     update(UpdateNixMode::Remove, packages, show_trace)
 }
 
@@ -210,8 +230,8 @@ fn main() -> ExitCode {
             print_error(error);
             ExitCode::FAILURE
         }
-        Ok(()) => {
-            println!("{}", "Successfully updated home.nix and activated generation");
+        Ok(success) => {
+            println!("{success}");
             ExitCode::SUCCESS
         }
     }
