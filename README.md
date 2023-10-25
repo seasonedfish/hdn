@@ -25,13 +25,6 @@ This program requires that:
 
 These requirements should be satisfied with the default home-manager installation.
 
-## Disclaimer
-This program uses Rust, and I don't actually know how to program in Rust.
-
-(I chose Rust because I found a Rust library for easily reading and writing nix files.)
-
-Someday I'll go back, actually learn Rust, and rewrite this, but for now, use at your own risk.
-
 ## Installation
 Releases are available on crates.io.
 ```shell
