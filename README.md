@@ -42,3 +42,6 @@ the code for nix parsing and writing comes from his project.
 
 I thank Armin Ronacher for his work on [similar](https://github.com/mitsuhiko/similar);
 the code that displays the `home.nix` diff comes from his project.
+
+## Also see
+[ixnay](https://github.com/pmarreck/ixnay)
